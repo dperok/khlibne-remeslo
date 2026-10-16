@@ -1,0 +1,18 @@
+{
+  "name": "site",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "npm --prefix backend run start:dev",
+    "build": "npm --prefix frontend run build && npm --prefix backend run build",
+    "start": "node scripts/start.mjs",
+    "verify:neon": "node scripts/verify-neon.mjs",
+    "db:migrate": "node backend/scripts/migrate.mjs",
+    "verify:admin": "node scripts/verify-admin.mjs"
+  },
+  "dependencies": {
+    "@neon/config": "^1.9.1",
+    "@neon/env": "^1.6.2"
+  }
+}

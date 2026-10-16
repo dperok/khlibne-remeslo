@@ -1,0 +1,11 @@
+.tools/
+node_modules/
+.next/
+dist/
+.env*
+!.env.example
+
+.neon
+artifacts/
+*.tsbuildinfo
+*.log
