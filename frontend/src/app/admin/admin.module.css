@@ -5,3 +5,4 @@
 .page input::placeholder,.page textarea::placeholder{color:var(--muted);opacity:.8}.page input:-webkit-autofill,.page input:-webkit-autofill:hover,.page input:-webkit-autofill:focus{-webkit-text-fill-color:var(--ink);caret-color:var(--ink);-webkit-box-shadow:0 0 0 1000px var(--surface) inset}
 :global(html[data-theme="dark"]) .error,:global(html[data-theme="dark"]) .danger{color:#ffb19a}:global(html[data-theme="dark"]) .success{color:#c5db94}
 .headerActions{display:flex;align-items:center;gap:22px;margin-left:auto}
+.productSearch{margin-top:24px}

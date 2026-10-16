@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import type { Bakery, Product } from '../bakery-site';
 import styles from './admin.module.css';
 import ThemeToggle from '../theme-toggle';
+import { createCatalogSearch } from '../../../../backend/src/catalog-search';
 
 type EditableProduct = Product & { visible?: boolean };
 type Content = { products: EditableProduct[]; bakery: Bakery; bots: { user: string; admin: string }; temporaryPassword: boolean };
@@ -64,6 +65,7 @@ export default function AdminPage() {
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState('products');
   const [draft, setDraft] = useState<EditableProduct>(blank);
+  const [productQuery, setProductQuery] = useState('');
   const [contacts, setContacts] = useState<Bakery | null>(null);
   useEffect(() => {
     let active = true;
@@ -84,6 +86,8 @@ export default function AdminPage() {
   }
   async function refresh() { const data = await api('content'); setContent(data); setContacts(data.bakery); }
   const field = (key: keyof EditableProduct, value: string | boolean | number | undefined) => setDraft((previous) => ({ ...previous, [key]: value }));
+  const matchesProduct = createCatalogSearch(productQuery);
+  const filteredProducts = content?.products.filter((product) => matchesProduct(`${product.name} ${product.description}`) || (productQuery.trim() !== '' && product.id.toLowerCase().includes(productQuery.trim().toLowerCase()))) ?? [];
 
   return <div className={styles.page}>
     <header className={styles.header}><Link href="/">🌾 Хлібне ремесло</Link><span>ПАНЕЛЬ АДМІНІСТРАТОРА</span><div className={styles.headerActions}><ThemeToggle />{content && <button disabled={busy} onClick={() => action(async () => { await api('logout', 'POST'); setContent(null); setPassword(''); })}>Вийти ↗</button>}</div></header>
@@ -101,7 +105,10 @@ export default function AdminPage() {
       {tab === 'analytics' && <AnalyticsPanel />}
       {tab === 'products' && <div className={styles.columns}>
         <section className={styles.panel}><div className={styles.panelHeading}><h2>Вітрина <small>{content.products.length}</small></h2><button disabled={busy} onClick={() => { setDraft({ ...blank }); setNotice(''); }}>+ Новий товар</button></div>
-          <div className={styles.productList}>{content.products.map((product) => <button key={product.id} disabled={busy} className={draft.id === product.id ? styles.selected : ''} onClick={() => { setDraft({ ...product, visible: product.visible !== false }); setNotice(''); }}><span>{product.name}<small>{product.categoryLabel} · {product.visible === false ? 'Прихований' : 'У вітрині'}</small></span><span>↗</span></button>)}</div>
+          <label className={styles.productSearch}>Пошук товарів<input type="search" placeholder="Назва або ID товару" value={productQuery} onChange={(event) => setProductQuery(event.target.value)} /></label>
+          <p aria-live="polite">Знайдено: {filteredProducts.length} із {content.products.length}</p>
+          <div className={styles.productList}>{filteredProducts.map((product) => <button key={product.id} disabled={busy} className={draft.id === product.id ? styles.selected : ''} onClick={() => { setDraft({ ...product, visible: product.visible !== false }); setNotice(''); }}><span>{product.name}<small>{product.categoryLabel} · {product.visible === false ? 'Прихований' : 'У вітрині'}</small></span><span>↗</span></button>)}</div>
+          {content.products.length > 0 && filteredProducts.length === 0 && <p>Нічого не знайдено. Спробуйте іншу назву або <button type="button" onClick={() => setProductQuery('')}>очистіть пошук</button>.</p>}
           {!content.products.length && <p>Додайте перший товар до вітрини.</p>}
         </section>
         <section className={styles.panel}><h2>{draft.id ? 'Редагувати товар' : 'Новий товар'}</h2>
