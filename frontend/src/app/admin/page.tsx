@@ -9,7 +9,7 @@ import { createCatalogSearch } from '../../../../backend/src/catalog-search';
 
 type EditableProduct = Product & { visible?: boolean };
 type Content = { products: EditableProduct[]; bakery: Bakery; bots: { user: string; admin: string }; temporaryPassword: boolean };
-const blank: EditableProduct = { id: '', name: '', category: 'bread', categoryLabel: 'Хліб', image: '/images/bread-hero.jpg', description: '', ingredients: '', allergens: '', tag: '', visible: true };
+const blank: EditableProduct = { id: '', name: '', category: 'bread', categoryLabel: 'Хліб', image: '/images/bread-hero.jpg', description: '', ingredients: '', allergens: '', tag: '', visible: true, available: true };
 const botStates: Record<string, string> = { disabled: 'Токен не додано', starting: 'Запускається', running: 'Працює', retrying: 'Повторне з’єднання', stopped: 'Зупинений', invalid_token: 'Невірний токен', polling_conflict: 'Вже запущений в іншому процесі', webhook_configured: 'Встановлено webhook', duplicate_tokens: 'Для ботів потрібні різні токени' };
 type Day = { day: string; visitors: number; sessions: number; averageActiveMs: number };
 type Analytics = { timezone: string; today: Day; days: Day[] };
@@ -107,7 +107,7 @@ export default function AdminPage() {
         <section className={styles.panel}><div className={styles.panelHeading}><h2>Вітрина <small>{content.products.length}</small></h2><button disabled={busy} onClick={() => { setDraft({ ...blank }); setNotice(''); }}>+ Новий товар</button></div>
           <label className={styles.productSearch}>Пошук товарів<input type="search" placeholder="Назва або ID товару" value={productQuery} onChange={(event) => setProductQuery(event.target.value)} /></label>
           <p aria-live="polite">Знайдено: {filteredProducts.length} із {content.products.length}</p>
-          <div className={styles.productList}>{filteredProducts.map((product) => <button key={product.id} disabled={busy} className={draft.id === product.id ? styles.selected : ''} onClick={() => { setDraft({ ...product, visible: product.visible !== false }); setNotice(''); }}><span>{product.name}<small>{product.categoryLabel} · {product.visible === false ? 'Прихований' : 'У вітрині'}</small></span><span>↗</span></button>)}</div>
+          <div className={styles.productList}>{filteredProducts.map((product) => <button key={product.id} disabled={busy} className={draft.id === product.id ? styles.selected : ''} onClick={() => { setDraft({ ...product, visible: product.visible !== false }); setNotice(''); }}><span>{product.name}<small>{product.categoryLabel} · {product.visible === false ? 'Прихований' : 'У вітрині'}{product.available === false ? ' · Немає в наявності' : ''}</small></span><span>↗</span></button>)}</div>
           {content.products.length > 0 && filteredProducts.length === 0 && <p>Нічого не знайдено. Спробуйте іншу назву або <button type="button" onClick={() => setProductQuery('')}>очистіть пошук</button>.</p>}
           {!content.products.length && <p>Додайте перший товар до вітрини.</p>}
         </section>
@@ -124,6 +124,7 @@ export default function AdminPage() {
             <label>Склад<textarea maxLength={1500} rows={2} value={draft.ingredients} onChange={(event) => field('ingredients', event.target.value)} /></label>
             <label>Алергени<input maxLength={500} value={draft.allergens} onChange={(event) => field('allergens', event.target.value)} /></label>
             <label className={styles.checkbox}><input type="checkbox" checked={draft.visible !== false} onChange={(event) => field('visible', event.target.checked)} />Показувати у вітрині</label>
+            <label className={styles.checkbox}><input type="checkbox" checked={draft.available !== false} onChange={(event) => field('available', event.target.checked)} />Є в наявності</label>
             <div className={styles.actions}><button className={styles.primary} disabled={busy}>{busy ? 'Зберігаємо…' : 'Зберегти товар'}</button>{draft.id && <button type="button" className={styles.danger} disabled={busy} onClick={() => {
               if (window.confirm(`Видалити «${draft.name}» з каталогу?`)) action(async () => { await api(`products/${draft.id}`, 'DELETE'); await refresh(); setDraft({ ...blank }); setNotice('Товар видалено.'); });
             }}>Видалити</button>}</div>

@@ -32,3 +32,5 @@
 .pagination{display:flex;justify-content:center;flex-wrap:wrap;gap:7px;margin-top:36px}.pagination button{min-width:38px;min-height:38px;padding:8px 12px;background:transparent;border:1px solid var(--line);border-radius:4px;font-size:12px}.pagination button[aria-current=page]{background:var(--accent);color:var(--cream)}.pagination button:disabled{opacity:.35;cursor:default}.pagination button:not(:disabled):hover{background:var(--hover-bg);color:var(--ink)}
 
 .themeToggle[role=switch]{display:inline-flex;align-items:center;color:inherit;background:transparent;cursor:pointer;flex-shrink:0}
+
+.unavailableProduct .productImage img{filter:grayscale(1);opacity:.6}.unavailableProduct .productTitle,.unavailableProduct .productMeta,.unavailableProduct .productDescription{color:var(--muted);filter:grayscale(1);opacity:.65}.stockStatus{display:inline-block;padding:6px 10px;margin-top:12px;border:1px solid var(--line);border-radius:4px;color:var(--muted);font-size:11px;font-weight:600}.unavailableProduct .price{color:var(--muted)}
