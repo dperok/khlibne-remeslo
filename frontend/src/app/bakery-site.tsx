@@ -6,6 +6,8 @@ import VisitTracker from './visit-tracker';
 import { useRef, useState } from 'react';
 import styles from './page.module.css';
 import { createCatalogSearch } from '../../../backend/src/catalog-search';
+import ThemeToggle from './theme-toggle';
+import { catalogGroups as categories, catalogGroup } from './catalog-groups';
 
 export type Product = { price?: number; id: string; name: string; category: string; categoryLabel: string; image: string; description: string; ingredients: string; allergens: string; tag: string };
 export type Bakery = { name: string; city: string; address: string; fullAddress: string; mapsUrl: string; phone: string | null; instagram: string | null; email: string | null; latitude?: number; longitude?: number };
@@ -19,7 +21,6 @@ function Arrow({ diagonal = false }: { diagonal?: boolean }) {
 function Pin() {
   return <svg width="18" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z" stroke="currentColor" strokeWidth="1.5"/><circle cx="12" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.5"/></svg>;
 }
-const categories = [{ id: 'all', name: 'Уся випічка' }, { id: 'bread', name: 'Хліб' }, { id: 'pastry', name: 'Солона та листкова' }, { id: 'sweet', name: 'До чаю' }];
 
 export default function BakerySite({ products, bakery, demo = false }: { products: Product[]; bakery: Bakery; demo?: boolean }) {
   const [shown, setShown] = useState(18);
@@ -28,13 +29,13 @@ export default function BakerySite({ products, bakery, demo = false }: { product
   const [selected, setSelected] = useState<Product | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const matches = createCatalogSearch(query);
-  const visible = products.filter((product) => (category === 'all' || product.category === category) && matches(`${product.name} ${product.description}`));
+  const visible = products.filter((product) => (category === 'all' || catalogGroup(product) === category) && matches(`${product.name} ${product.description}`));
   function openProduct(product: Product) { setSelected(product); dialog.current?.showModal(); }
 
   return <>
     <VisitTracker />
     <a href="#catalog" className="skip-link">Перейти до каталогу</a>
-    <div className={styles.topline}>Знайомі смаки. Теплі моменти. <span>Ваша пекарня у Харкові</span></div>
+    <div className={styles.topline}><a href="https://t.me/Khlibne_remeslo_kh_bot" target="_blank" rel="noopener noreferrer">↗ Telegram</a><a href={bakery.mapsUrl} target="_blank" rel="noopener noreferrer"><Pin />{bakery.city}, {bakery.address}</a><ThemeToggle /></div>
     <header className={styles.header}>
       <a href="#home" className={styles.brand} aria-label="Хлібне ремесло — на початок"><Wheat /><span>Хлібне ремесло<small>ПЕКАРНЯ З ХАРАКТЕРОМ</small></span></a>
       <nav aria-label="Головна навігація"><a href="#catalog">Наша випічка</a><a href="#about">Про пекарню</a><a href="#contacts">Контакти</a></nav>
@@ -57,9 +58,9 @@ export default function BakerySite({ products, bakery, demo = false }: { product
       </section>
       <div className={styles.ribbon} aria-hidden="true"><span>ХЛІБ, ЩО ОБ’ЄДНУЄ</span><span>✳</span><span>ТЕПЛО В КОЖНІЙ СКОРИНЦІ</span><span>✳</span><span>ПРОСТІ РЕЧІ — ОСОБЛИВИЙ СМАК</span><span>✳</span><span>ХЛІБНЕ РЕМЕСЛО</span><span>✳</span></div>
       <section id="catalog" className={styles.catalog} aria-labelledby="catalog-title">
-        <div className={styles.sectionTop}><div><p className={styles.eyebrow}>ЩОСЬ ДО ВАШОГО СТОЛУ</p><h2 id="catalog-title">Наша <em>вітрина</em></h2></div><p className={styles.sectionIntro}>Хліб для щодня, круасан для настрою.<br />Знайдіть свій маленький привід для радості.</p></div>
+        <div className={styles.sectionTop}><div><h2 id="catalog-title">Наша вітрина</h2></div><p className={styles.sectionIntro}>Хліб для щодня, круасан для настрою.<br />Знайдіть свій маленький привід для радості.</p></div>
         <div className={styles.catalogTools}>
-          <div className={styles.tabs} role="group" aria-label="Категорії випічки">{categories.map((item) => <button key={item.id} aria-pressed={category === item.id} className={category === item.id ? styles.activeTab : ''} onClick={() => { setCategory(item.id); setShown(18); }}>{item.name}{item.id === 'all' && <span>{products.length.toString().padStart(2, '0')}</span>}</button>)}</div>
+          <div className={styles.tabs} role="group" aria-label="Категорії випічки">{categories.map((item) => <button key={item.id} aria-pressed={category === item.id} className={category === item.id ? styles.activeTab : ''} onClick={() => { setCategory(item.id); setShown(18); }}>{item.name}<span>{products.filter((product) => item.id === 'all' || catalogGroup(product) === item.id).length}</span></button>)}</div>
           <label className={styles.search}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" strokeWidth="1.5"/><path d="m16 16 5 5" stroke="currentColor" strokeWidth="1.5"/></svg><input value={query} onChange={(event) => { setQuery(event.target.value); setShown(18); }} type="search" aria-label="Пошук випічки" placeholder="Знайти щось смачне" /></label>
         </div>
         <p className={styles.demoNote}>{demo ? 'Знайомство з майбутнім каталогом: фото й позиції наведені для прикладу.' : 'Асортимент і ціни з нашої вітрини. Наявність уточнюйте в пекарні.'}</p>

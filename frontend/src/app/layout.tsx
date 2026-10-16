@@ -20,8 +20,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="uk" className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body>{children}</body>
+    <html lang="uk" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
+      <body><script dangerouslySetInnerHTML={{ __html: "try{var t=localStorage.getItem('bakery-theme');document.documentElement.dataset.theme=t==='dark'||t!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}catch(e){}" }} />{children}</body>
     </html>
   );
 }
