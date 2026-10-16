@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import Link from 'next/link';
+
 import VisitTracker from './visit-tracker';
 import { useRef, useState } from 'react';
 import styles from './page.module.css';
@@ -35,7 +35,7 @@ export default function BakerySite({ products, bakery, demo = false }: { product
   return <>
     <VisitTracker />
     <a href="#catalog" className="skip-link">Перейти до каталогу</a>
-    <div className={styles.topline}><a href="https://t.me/Khlibne_remeslo_kh_bot" target="_blank" rel="noopener noreferrer">↗ Telegram</a><a href={bakery.mapsUrl} target="_blank" rel="noopener noreferrer"><Pin />{bakery.city}, {bakery.address}</a><ThemeToggle /></div>
+    <div className={styles.topline}><a href="https://t.me/Khlibne_remeslo_kh_bot" target="_blank" rel="noopener noreferrer"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.7 3.3a1 1 0 0 0-1.1-.2L2.9 10c-1 .4-1 1.1-.2 1.4l4.6 1.4 1.8 5.5c.2.6.5.8.9.8.3 0 .6-.2.9-.5l2.6-2.5 4.7 3.5c.9.5 1.5.2 1.7-.8l2.7-13.8c.2-.8 0-1.4-.9-1.7ZM8.1 12.5l10.5-6.6c.5-.3.9-.1.5.2l-8.7 7.8-.3 3.6-2-5Z" /></svg>Telegram</a><a href={bakery.mapsUrl} target="_blank" rel="noopener noreferrer"><Pin />{bakery.city}, {bakery.address}</a><ThemeToggle /></div>
     <header className={styles.header}>
       <a href="#home" className={styles.brand} aria-label="Хлібне ремесло — на початок"><Wheat /><span>Хлібне ремесло<small>ПЕКАРНЯ З ХАРАКТЕРОМ</small></span></a>
       <nav aria-label="Головна навігація"><a href="#catalog">Наша випічка</a><a href="#about">Про пекарню</a><a href="#contacts">Контакти</a></nav>
@@ -92,7 +92,7 @@ export default function BakerySite({ products, bakery, demo = false }: { product
         </div> : <p>Телефон та посилання на соцмережі додамо згодом.<br />А поки — чекаємо на знайомство в пекарні.</p>}
       </div><a href={bakery.mapsUrl} target="_blank" rel="noopener noreferrer" aria-label="Відкрити адресу пекарні в Google Maps"><Arrow diagonal /></a></section>
     </main>
-    <footer className={styles.footer}><a href="#home" className={styles.brand}><Wheat /><span>Хлібне ремесло<small>ПЕКАРНЯ З ХАРАКТЕРОМ</small></span></a><span>Харків · {bakery.address}</span><span>© 2026 Хлібне ремесло</span><Link href="/admin">Для команди</Link><a href="#home">Нагору ↑</a></footer>
+    <footer className={styles.footer}><a href="#home" className={styles.brand}><Wheat /><span>Хлібне ремесло<small>ПЕКАРНЯ З ХАРАКТЕРОМ</small></span></a><span>Харків · {bakery.address}</span><span>© 2026 Хлібне ремесло</span><a href="#home">Нагору ↑</a></footer>
     <dialog ref={dialog} className={styles.dialog} onClose={() => setSelected(null)} onClick={(event) => { if (event.target === event.currentTarget) dialog.current?.close(); }} aria-labelledby="product-dialog-title">
       {selected && <><button className={styles.closeDialog} onClick={() => dialog.current?.close()} aria-label="Закрити опис">×</button><div className={styles.dialogImage}><Image unoptimized={selected.image.startsWith('https://')} src={selected.image} alt={selected.name} fill sizes="(max-width: 700px) 90vw, 420px" /></div><div className={styles.dialogCopy}><p className={styles.eyebrow}>{selected.categoryLabel}</p><h2 id="product-dialog-title">{selected.name}</h2><p>{selected.description}</p><p className={styles.dialogPrice}>{selected.price != null ? `${selected.price.toLocaleString('uk-UA')} ₴` : ''}</p>{selected.ingredients && <><h3>Склад</h3><p>{selected.ingredients}</p></>}{selected.allergens && <><h3>Можливі алергени</h3><p>{selected.allergens}</p></>}<p className={styles.dialogNote}>{demo ? 'Демонстраційна позиція. ' : ''}Склад, алергени та наявність уточнюйте в пекарні.</p><a href={bakery.mapsUrl} className={styles.primary} target="_blank" rel="noopener noreferrer">Завітати до пекарні <Arrow diagonal /></a></div></>}
     </dialog>
