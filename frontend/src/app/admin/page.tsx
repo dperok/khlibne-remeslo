@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import type { Bakery, Product } from '../bakery-site';
 import styles from './admin.module.css';
+import ThemeToggle from '../theme-toggle';
 
 type EditableProduct = Product & { visible?: boolean };
 type Content = { products: EditableProduct[]; bakery: Bakery; bots: { user: string; admin: string }; temporaryPassword: boolean };
@@ -85,7 +86,7 @@ export default function AdminPage() {
   const field = (key: keyof EditableProduct, value: string | boolean | number | undefined) => setDraft((previous) => ({ ...previous, [key]: value }));
 
   return <div className={styles.page}>
-    <header className={styles.header}><Link href="/">🌾 Хлібне ремесло</Link><span>ПАНЕЛЬ АДМІНІСТРАТОРА</span>{content && <button disabled={busy} onClick={() => action(async () => { await api('logout', 'POST'); setContent(null); setPassword(''); })}>Вийти ↗</button>}</header>
+    <header className={styles.header}><Link href="/">🌾 Хлібне ремесло</Link><span>ПАНЕЛЬ АДМІНІСТРАТОРА</span><div className={styles.headerActions}><ThemeToggle />{content && <button disabled={busy} onClick={() => action(async () => { await api('logout', 'POST'); setContent(null); setPassword(''); })}>Вийти ↗</button>}</div></header>
     {loading ? <p className={styles.loading}>Завантажуємо панель…</p> : !content ? <main className={styles.login}>
       <p className={styles.eyebrow}>ВАША ПЕКАРНЯ ПІД КОНТРОЛЕМ</p><h1>Раді бачити <em>знову.</em></h1><p>Увійдіть, щоб керувати вітриною та контактами пекарні.</p>
       <form onSubmit={(event) => { event.preventDefault(); action(async () => { await api('login', 'POST', { password }); setPassword(''); await refresh(); }); }}>
@@ -128,7 +129,7 @@ export default function AdminPage() {
         <button className={styles.primary} disabled={busy}>{busy ? 'Зберігаємо…' : 'Зберегти контакти'}</button>
       </form></section>}
       {tab === 'bots' && <section className={styles.panel}><h2>Telegram-боти</h2><p>Додайте різні токени до кореневого <code>.env</code> і перезапустіть сервер. Потрібні два боти, створені через BotFather.</p><div className={styles.botGrid}>
-        <article><span>ДЛЯ ВІДВІДУВАЧІВ</span><h3>Бот пекарні</h3><a className={styles.botUsername} href="https://t.me/Khlibne_remeslo_kh_bot" target="_blank" rel="noopener noreferrer">@Khlibne_remeslo_kh_bot ↗</a><strong>{botStates[content.bots.user] ?? content.bots.user}</strong><code>TELEGRAM_USER_BOT_TOKEN</code><p>/start · /catalog · /address · /contacts · /support · /cancel · /site</p></article>
+        <article><span>ДЛЯ ВІДВІДУВАЧІВ</span><h3>Бот пекарні</h3><a className={styles.botUsername} href="https://t.me/Khlibne_remeslo_kh_bot" target="_blank" rel="noopener noreferrer">@Khlibne_remeslo_kh_bot ↗</a><strong>{botStates[content.bots.user] ?? content.bots.user}</strong><code>TELEGRAM_USER_BOT_TOKEN</code><p>/start · /contacts · /support · /cancel · /site</p></article>
         <article><span>ДЛЯ КОМАНДИ</span><h3>Адміністративний бот</h3><a className={styles.botUsername} href="https://t.me/iehngtvjmrrbot" target="_blank" rel="noopener noreferrer">@iehngtvjmrrbot ↗</a><strong>{botStates[content.bots.admin] ?? content.bots.admin}</strong><code>TELEGRAM_ADMIN_BOT_TOKEN</code><p>/status · /products · /show · /hide · /contact · /panel</p></article>
       </div><p>Дозволені Telegram ID: <code>470334534</code>, <code>5711475783</code>. Адміністративні команди доступні лише в особистому чаті.</p><p>Перед публічним запуском задайте <code>PUBLIC_SITE_URL</code> — адресу сайту з HTTPS.</p><button disabled={busy} onClick={() => action(async () => { await refresh(); setNotice('Статуси оновлено.'); })}>Оновити статуси</button></section>}
     </main>}
