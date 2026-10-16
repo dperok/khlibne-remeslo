@@ -29,7 +29,8 @@ export default function BakerySite({ products, bakery, demo = false }: { product
   const [selected, setSelected] = useState<Product | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const matches = createCatalogSearch(query);
-  const visible = products.filter((product) => (category === 'all' || catalogGroup(product) === category) && matches(`${product.name} ${product.description}`));
+  const visible = products.filter((product) => (category === 'all' || catalogGroup(product) === category) && matches(`${product.name} ${product.description}`))
+    .sort((first, second) => Number(first.available === false) - Number(second.available === false));
   const pageCount = Math.max(1, Math.ceil(visible.length / 18));
   const currentPage = Math.min(page, pageCount);
   function changePage(next: number) {
@@ -66,7 +67,7 @@ export default function BakerySite({ products, bakery, demo = false }: { product
       <section id="catalog" className={styles.catalog} aria-labelledby="catalog-title">
         <div className={styles.sectionTop}><div><h2 id="catalog-title">Наша вітрина</h2></div><p className={styles.sectionIntro}>Хліб для щодня, круасан для настрою.<br />Знайдіть свій маленький привід для радості.</p></div>
         <div className={styles.catalogTools}>
-          <div className={styles.tabs} role="group" aria-label="Категорії випічки">{categories.map((item) => <button key={item.id} aria-pressed={category === item.id} className={category === item.id ? styles.activeTab : ''} onClick={() => { setCategory(item.id); setPage(1); }}>{item.name}<span>{products.filter((product) => item.id === 'all' || catalogGroup(product) === item.id).length}</span></button>)}</div>
+          <div className={styles.tabs} role="group" aria-label="Категорії випічки">{categories.map((item) => <button key={item.id} aria-pressed={category === item.id} className={category === item.id ? styles.activeTab : ''} onClick={() => { setCategory(item.id); setPage(1); }}>{item.name}<span title="Товарів у наявності">{products.filter((product) => product.available !== false && (item.id === 'all' || catalogGroup(product) === item.id)).length}</span></button>)}</div>
           <label className={styles.search}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" strokeWidth="1.5"/><path d="m16 16 5 5" stroke="currentColor" strokeWidth="1.5"/></svg><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} type="search" aria-label="Пошук випічки" placeholder="Знайти щось смачне" /></label>
         </div>
         <p className={styles.demoNote}>{demo ? 'Знайомство з майбутнім каталогом: фото й позиції наведені для прикладу.' : 'Асортимент і ціни з нашої вітрини. Наявність уточнюйте в пекарні.'}</p>
