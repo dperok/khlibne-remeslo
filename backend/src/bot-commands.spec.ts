@@ -29,8 +29,13 @@ describe('Telegram access and commands', () => {
     expect(store.setContact).toHaveBeenCalledWith('email', 'bakery@example.com');
   });
   it('supports visitor keyboard buttons and returns the current address', async () => {
-    expect(await commands.handle('user', message(99, '🥐 Випічка'))).toContain('Хліб із насінням');
-    expect(await commands.handle('user', message(99, '📍 Адреса'))).toContain('Шевченка, 167');
+    expect(await commands.handle('user', message(99, '🥐 Випічка'))).toContain('/#catalog');
+    expect(await commands.handle('user', message(99, '📍 Адреса'))).toContain('/#location');
     expect(await commands.handle('user', message(99, '☎️ Контакти'))).toContain('Контакти додамо');
+  });
+  it('only advertises current visitor commands in the welcome message', async () => {
+    const text = await commands.handle('user', message(99, '/start'));
+    expect(text).toContain('/support');
+    expect(text).not.toMatch(/\/catalog|\/address|\/cancel/);
   });
 });

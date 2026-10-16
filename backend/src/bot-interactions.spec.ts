@@ -31,10 +31,10 @@ describe('Telegram location and two-bot correspondence', () => {
   });
   afterEach(() => vi.unstubAllEnvs());
 
-  it('sends a native venue with the verified coordinates and no user location request', async () => {
-    await service.message('user', user('/address'), call);
-    expect(sent).toHaveLength(1);
-    expect(sent[0]).toMatchObject({ token: 'visitor-token', method: 'sendVenue', body: { chat_id: 12345, title: bakery.name, latitude: 50.0025971, longitude: 36.2705935, address: bakery.fullAddress } });
+  it('does not send venues or catalogues for retired visitor commands', async () => {
+    expect(await service.message('user', user('/address'), call)).toBe(false);
+    expect(await service.message('user', user('/catalog'), call)).toBe(false);
+    expect(sent).toHaveLength(0);
   });
   it('opens and cancels the explicit support mode', async () => {
     await service.message('user', user('/support'), call);

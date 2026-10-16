@@ -23,13 +23,19 @@ function Pin() {
 }
 
 export default function BakerySite({ products, bakery, demo = false }: { products: Product[]; bakery: Bakery; demo?: boolean }) {
-  const [shown, setShown] = useState(18);
+  const [page, setPage] = useState(1);
   const [category, setCategory] = useState('all');
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<Product | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const matches = createCatalogSearch(query);
   const visible = products.filter((product) => (category === 'all' || catalogGroup(product) === category) && matches(`${product.name} ${product.description}`));
+  const pageCount = Math.max(1, Math.ceil(visible.length / 18));
+  const currentPage = Math.min(page, pageCount);
+  function changePage(next: number) {
+    setPage(next);
+    document.getElementById('catalog')?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+  }
   function openProduct(product: Product) { setSelected(product); dialog.current?.showModal(); }
 
   return <>
@@ -60,17 +66,17 @@ export default function BakerySite({ products, bakery, demo = false }: { product
       <section id="catalog" className={styles.catalog} aria-labelledby="catalog-title">
         <div className={styles.sectionTop}><div><h2 id="catalog-title">Наша вітрина</h2></div><p className={styles.sectionIntro}>Хліб для щодня, круасан для настрою.<br />Знайдіть свій маленький привід для радості.</p></div>
         <div className={styles.catalogTools}>
-          <div className={styles.tabs} role="group" aria-label="Категорії випічки">{categories.map((item) => <button key={item.id} aria-pressed={category === item.id} className={category === item.id ? styles.activeTab : ''} onClick={() => { setCategory(item.id); setShown(18); }}>{item.name}<span>{products.filter((product) => item.id === 'all' || catalogGroup(product) === item.id).length}</span></button>)}</div>
-          <label className={styles.search}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" strokeWidth="1.5"/><path d="m16 16 5 5" stroke="currentColor" strokeWidth="1.5"/></svg><input value={query} onChange={(event) => { setQuery(event.target.value); setShown(18); }} type="search" aria-label="Пошук випічки" placeholder="Знайти щось смачне" /></label>
+          <div className={styles.tabs} role="group" aria-label="Категорії випічки">{categories.map((item) => <button key={item.id} aria-pressed={category === item.id} className={category === item.id ? styles.activeTab : ''} onClick={() => { setCategory(item.id); setPage(1); }}>{item.name}<span>{products.filter((product) => item.id === 'all' || catalogGroup(product) === item.id).length}</span></button>)}</div>
+          <label className={styles.search}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" strokeWidth="1.5"/><path d="m16 16 5 5" stroke="currentColor" strokeWidth="1.5"/></svg><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} type="search" aria-label="Пошук випічки" placeholder="Знайти щось смачне" /></label>
         </div>
         <p className={styles.demoNote}>{demo ? 'Знайомство з майбутнім каталогом: фото й позиції наведені для прикладу.' : 'Асортимент і ціни з нашої вітрини. Наявність уточнюйте в пекарні.'}</p>
-        <div className={styles.products} aria-live="polite">{visible.slice(0, shown).map((product, index) => <article key={product.id} className={styles.product}>
-          <button className={styles.productImage} onClick={() => openProduct(product)} aria-label={`Детальніше: ${product.name}`}><Image unoptimized={product.image.startsWith('https://')} src={product.image} alt={product.name} fill sizes="(max-width: 440px) 100vw, (max-width: 760px) 50vw, 33vw" />{product.tag && <span className={styles.productTag}>{product.tag}</span>}<span className={styles.imageIndex}>{(index + 1).toString().padStart(2, '0')}</span></button>
+        <div className={styles.products} aria-live="polite">{visible.slice((currentPage - 1) * 18, currentPage * 18).map((product, index) => <article key={product.id} className={styles.product}>
+          <button className={styles.productImage} onClick={() => openProduct(product)} aria-label={`Детальніше: ${product.name}`}><Image unoptimized={product.image.startsWith('https://')} src={product.image} alt={product.name} fill sizes="(max-width: 440px) 100vw, (max-width: 760px) 50vw, 33vw" />{product.tag && <span className={styles.productTag}>{product.tag}</span>}<span className={styles.imageIndex}>{((currentPage - 1) * 18 + index + 1).toString().padStart(2, '0')}</span></button>
           <div className={styles.productMeta}><span>{product.categoryLabel}</span><span className={styles.price}>{product.price != null ? `${product.price.toLocaleString('uk-UA')} ₴` : demo ? 'Приклад асортименту' : ''}</span></div>
           <button className={styles.productTitle} onClick={() => openProduct(product)}><h3>{product.name}</h3><span><Arrow diagonal /></span></button>
           <p className={styles.productDescription}>{product.description}</p>
         </article>)}</div>
-        {shown < visible.length && <button className={styles.loadMore} onClick={() => setShown(shown + 18)}>Показати ще ({visible.length - shown}) <Arrow /></button>}
+        {pageCount > 1 && <nav className={styles.pagination} aria-label="Сторінки каталогу"><button disabled={currentPage === 1} onClick={() => changePage(currentPage - 1)}>← Назад</button>{Array.from({ length: pageCount }, (_, index) => index + 1).map((number) => <button key={number} aria-label={`Сторінка ${number}`} aria-current={currentPage === number ? 'page' : undefined} onClick={() => changePage(number)}>{number}</button>)}<button disabled={currentPage === pageCount} onClick={() => changePage(currentPage + 1)}>Далі →</button></nav>}
         {visible.length === 0 && <div className={styles.empty}><h3>Цього смаку поки немає у вітрині</h3><p>Спробуйте іншу назву або категорію.</p><button onClick={() => { setQuery(''); setCategory('all'); }}>Показати всю випічку <Arrow /></button></div>}
         <div className={styles.catalogBottom}><span>Смак краще знайомиться наживо.</span><a href="#location">Завітайте до пекарні <Arrow diagonal /></a></div>
       </section>

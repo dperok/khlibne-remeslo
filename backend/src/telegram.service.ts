@@ -72,7 +72,7 @@ export class TelegramService implements OnModuleInit, OnApplicationShutdown {
             catch { text = 'Не вдалося виконати дію. Перевірте команду та спробуйте пізніше.'; }
             if (text !== null) try {
               await this.call(token, 'sendMessage', { chat_id: update.message.chat.id, text, link_preview_options: { is_disabled: true },
-                ...(role === 'user' && update.message.chat.type === 'private' ? { reply_markup: { keyboard: [['🥐 Випічка', '📍 Адреса'], ['☎️ Контакти', '🌾 Сайт'], ['💬 Зв’язатися']], resize_keyboard: true } } : {}) });
+                ...(role === 'user' && update.message.chat.type === 'private' ? { reply_markup: { keyboard: [['☎️ Контакти', '🌾 Сайт'], ['💬 Зв’язатися']], resize_keyboard: true } } : {}) });
             } catch (error) {
               // A visitor blocking the bot must not stall every other chat.
               if ((error as { code?: number }).code !== 403) throw error;

@@ -38,17 +38,15 @@ export class BotCommandsService {
       return 'Панель пекарні\n/status — стан каталогу\n/products — товари та ID\n/hide ID — приховати товар\n/show ID — показати товар\n/contact phone|email|instagram значення — змінити контакт\n/panel — адмін-панель сайту';
     }
     if (command === '/catalog' || input === '🥐 Випічка') {
-      const state = await this.content.get();
-      const lines = state.products.filter((product) => product.visible !== false).map((product) => `• ${product.name}\n${product.description}`);
-      return `${state.demo ? 'Приклади нашої майбутньої вітрини:\n\n' : 'Наша вітрина:\n\n'}${lines.join('\n\n') || 'Каталог скоро оновиться.'}\n\nЗавітайте до пекарні — онлайн-замовлень немає.`.slice(0, 3900);
+      return `Каталог доступний на сайті пекарні: ${site}/#catalog`;
     }
-    if (command === '/address' || input === '📍 Адреса') { const { bakery } = await this.content.get(); return `${bakery.name}\n${bakery.fullAddress}\n${bakery.mapsUrl}`; }
+    if (command === '/address' || input === '📍 Адреса') return `Адреса пекарні є на сайті: ${site}/#location`;
     if (command === '/contacts' || input === '☎️ Контакти') {
       const { bakery } = await this.content.get();
       const contacts = [bakery.phone && `☎️ Телефон: ${bakery.phone}`, bakery.email && `Пошта: ${bakery.email}`, bakery.instagram && `Instagram: ${bakery.instagram}`].filter(Boolean).join('\n') || 'Контакти додамо згодом. Чекаємо на вас у пекарні!';
       return `${contacts}\n\n💬 Або напишіть нам тут: /support`;
     }
     if (command === '/site' || input === '🌾 Сайт') return `Наша вітрина: ${site}`;
-    return 'Вітаємо у «Хлібному ремеслі»! 🌾\n/catalog — випічка\n/address — де ми знаходимося\n/contacts — контакти\n/support — написати адміністраторам\n/cancel — завершити спілкування\n/site — сайт пекарні';
+    return 'Вітаємо у «Хлібному ремеслі»! 🌾\n/contacts — контакти\n/support — написати адміністраторам\n/site — сайт пекарні';
   }
 }

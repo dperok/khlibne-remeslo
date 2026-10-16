@@ -27,9 +27,6 @@ const message = (text) => ({ message_id: 71, chat: { id: userId, type: 'private'
 try {
   const store = new SupportRepository(db);
   const service = new BotInteractionsService(store, commands, content);
-  await service.message('user', message('/address'), call);
-  assert.equal(requests[0].method, 'sendVenue');
-  assert.equal(requests[0].body.latitude, 50.0025971);
   await service.message('user', message('/support'), call);
   await service.message('user', message('Integration test request'), call);
   const notifications = requests.filter((entry) => entry.token === 'test-admin' && entry.body.reply_markup?.inline_keyboard);
@@ -54,7 +51,6 @@ try {
   await restartedAgain.message('admin', reply, call);
   assert.equal(requests.filter((entry) => entry.token === 'test-user').length, count);
   console.log('PASS shared reply status: both admin messages marked answered and notifications recorded in Neon');
-  console.log('PASS venue: native Telegram card uses verified bakery coordinates');
   console.log('PASS support: two distinct admin deliveries with reply buttons');
   console.log('PASS Neon routing: ticket and prompt survive new service instances; reply returns to the right visitor');
   console.log('PASS duplicate admin update: reply is not sent twice');

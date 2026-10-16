@@ -4,7 +4,6 @@ import { BotCommandsService } from './bot-commands.service.js';
 import type { BotMessage, BotRole } from './bot-commands.service.js';
 import { SupportRepository } from './support.repository.js';
 import type { Ticket } from './support.repository.js';
-import { telegramCatalog } from './telegram-catalog.js';
 
 export type TelegramCall = <T>(token: string, method: string, body: Record<string, unknown>) => Promise<T>;
 export type BotCallback = { id: string; from: { id: number }; data?: string; message?: BotMessage };
@@ -86,11 +85,9 @@ export class BotInteractionsService {
   async catalogCallback(callback: BotCallback, call: TelegramCall) {
     const message = callback.message;
     if (!message?.message_id || message.chat.type !== 'private' || message.chat.id !== callback.from.id) return;
-    const match = /^catalog:(menu|bread|pastry|sweet):(\d{1,5})$/.exec(callback.data ?? '');
-    if (!match) return;
+    if (!callback.data?.startsWith('catalog:')) return;
     await call(this.token('user'), 'answerCallbackQuery', { callback_query_id: callback.id });
-    const view = telegramCatalog(await this.content.get(), match[1], Number(match[2]));
-    await call(this.token('user'), 'editMessageText', { chat_id: message.chat.id, message_id: message.message_id, ...view });
+    await call(this.token('user'), 'editMessageText', { chat_id: message.chat.id, message_id: message.message_id, text: 'Каталог тепер доступний на сайті пекарні. /site — відкрити сайт.', reply_markup: { inline_keyboard: [] } });
   }
   private async answer(admin: number, message: BotMessage, ticket: Ticket, call: TelegramCall) {
     if (!message.message_id) return;
@@ -124,17 +121,7 @@ export class BotInteractionsService {
       return false;
     }
     if (message.chat.type !== 'private' || !message.from || message.from.id !== message.chat.id) return false;
-    if (command === '/catalog' || input === '🥐 Випічка') {
-      const view = telegramCatalog(await this.content.get());
-      await call(this.token('user'), 'sendMessage', { chat_id: message.chat.id, ...view });
-      return true;
-    }
-    if (command === '/address' || input === '📍 Адреса') {
-      const { bakery } = await this.content.get();
-      if (typeof bakery.latitude !== 'number' || typeof bakery.longitude !== 'number') return false;
-      await call(this.token('user'), 'sendVenue', { chat_id: message.chat.id, latitude: bakery.latitude, longitude: bakery.longitude, title: bakery.name, address: bakery.fullAddress });
-      return true;
-    }
+    if (command === '/catalog' || command === '/address' || input === '🥐 Випічка' || input === '📍 Адреса') return false;
     if (command === '/support' || input === '💬 Зв’язатися') {
       await this.store.setMode(message.chat.id, true);
       await this.say('user', message.chat.id, 'Напишіть одне текстове повідомлення. Воно буде передане адміністраторам пекарні, а відповідь надійде сюди. Після надсилання режим зв’язку завершиться автоматично.\n/cancel — скасувати звернення.', call);
