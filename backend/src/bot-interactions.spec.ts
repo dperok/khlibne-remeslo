@@ -7,7 +7,7 @@ import type { SupportRepository, Ticket } from './support.repository.js';
 import { bakery } from './catalog.data.js';
 
 describe('Telegram location and two-bot correspondence', () => {
-  const ticket: Ticket = { id: 'a559935b-0e2b-4c12-a11a-e1c5ea45ae55', user_id: '12345', sender_name: 'Олена', message_text: 'Чи є сьогодні круасани?' };
+  const ticket: Ticket = { id: 'a559935b-0e2b-4c12-a11a-e1c5ea45ae55', user_id: '12345', source_message_id: '7', sender_name: 'Олена', message_text: 'Чи є сьогодні круасани?' };
   const user = (text?: string): BotMessage => ({ message_id: 7, from: { id: 12345, first_name: 'Олена' }, chat: { id: 12345, type: 'private' }, text });
   let repository: Record<string, ReturnType<typeof vi.fn>>;
   let content: ContentService;
@@ -87,7 +87,7 @@ describe('Telegram location and two-bot correspondence', () => {
     expect(repository.savePrompt).toHaveBeenCalledWith(5711475783, expect.any(Number), ticket.id);
     await service.message('admin', { message_id: 200, from: { id: 5711475783 }, chat: { id: 5711475783, type: 'private' }, reply_to_message: { message_id: 102 }, text: 'Так, чекаємо на вас!' }, call);
     expect(repository.ticketForPrompt).toHaveBeenCalledWith(5711475783, 102);
-    expect(sent).toContainEqual(expect.objectContaining({ token: 'visitor-token', body: expect.objectContaining({ chat_id: '12345', text: 'Відповідь пекарні:\n\nТак, чекаємо на вас!' }) }));
+    expect(sent).toContainEqual(expect.objectContaining({ token: 'visitor-token', body: expect.objectContaining({ chat_id: '12345', text: 'Відповідь пекарні:\n\nТак, чекаємо на вас!', reply_parameters: { message_id: 7, allow_sending_without_reply: true } }) }));
     expect(repository.markReplied).toHaveBeenCalledWith(5711475783, 200, ticket.id);
     expect(repository.cancelPrompts).toHaveBeenCalledWith(5711475783);
     expect(sent.at(-1)?.body.text).toContain('Режим відповіді завершено');

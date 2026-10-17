@@ -95,7 +95,8 @@ export class BotInteractionsService {
     if (await this.store.replied(admin, message.message_id)) return;
     const text = `Відповідь пекарні:\n\n${message.text}`;
     try {
-      for (let offset = 0; offset < text.length; offset += 4000) await this.say('user', ticket.user_id, text.slice(offset, offset + 4000), call);
+      for (let offset = 0; offset < text.length; offset += 4000) await this.say('user', ticket.user_id, text.slice(offset, offset + 4000), call,
+        { reply_parameters: { message_id: Number(ticket.source_message_id), allow_sending_without_reply: true } });
     } catch {
       await this.say('admin', admin, 'Відповідь не доставлено. Можливо, відвідувач заблокував бота. Спробуйте пізніше.', call); return;
     }

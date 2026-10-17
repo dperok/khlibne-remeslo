@@ -41,7 +41,9 @@ try {
   const restartedAgain = new BotInteractionsService(new SupportRepository(db), commands, content);
   const reply = { message_id: 81, from: { id: 910000002 }, chat: { id: 910000002, type: 'private' }, reply_to_message: { message_id: prompt.messageId }, text: 'Integration test answer' };
   await restartedAgain.message('admin', reply, call);
-  assert.ok(requests.some((entry) => entry.token === 'test-user' && entry.body.chat_id === String(userId) && entry.body.text.includes('Integration test answer')));
+  const visitorAnswer = requests.find((entry) => entry.token === 'test-user' && entry.body.chat_id === String(userId) && entry.body.text.includes('Integration test answer'));
+  assert.ok(visitorAnswer);
+  assert.deepEqual(visitorAnswer.body.reply_parameters, { message_id: 71, allow_sending_without_reply: true });
   const statuses = requests.filter((entry) => entry.method === 'editMessageReplyMarkup');
   assert.equal(statuses.length, 2);
   assert.ok(statuses.every((entry) => entry.body.reply_markup.inline_keyboard[0][0].text.includes('Вже відповіли')));
@@ -53,6 +55,7 @@ try {
   console.log('PASS shared reply status: both admin messages marked answered and notifications recorded in Neon');
   console.log('PASS support: two distinct admin deliveries with reply buttons');
   console.log('PASS Neon routing: ticket and prompt survive new service instances; reply returns to the right visitor');
+  console.log('PASS Telegram reply: answer references the original support message ID stored in Neon');
   console.log('PASS duplicate admin update: reply is not sent twice');
   console.log('Telegram calls were mocked; no real users or administrators were messaged');
 } finally {

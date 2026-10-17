@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { DatabaseService } from './database.service.js';
 
-export type Ticket = { id: string; user_id: string; sender_name: string; message_text: string };
+export type Ticket = { id: string; user_id: string; source_message_id: string | number; sender_name: string; message_text: string };
 @Injectable()
 export class SupportRepository {
   constructor(private readonly db: DatabaseService) {}
