@@ -44,9 +44,10 @@ Correspondence and routing survive application restarts. Text messages are suppo
 attachments receive a request to describe the issue in text. No messages outside explicit
 support mode are relayed. Apply `003_telegram_support.sql` using `npm run db:migrate`.
 
-Open `/admin`. The requested temporary password
-is configured only in the gitignored root `.env` as `ADMIN_PASSWORD`. Change it before
-publishing, then restart the backend (changing the password invalidates existing sessions).
+Open `/admin`. The administrator password is configured only in the gitignored root
+`.env` as `ADMIN_PASSWORD`. Use a strong unique value and configure it separately in
+Vercel's environment variables. Restart the backend after a change; changing the
+password invalidates existing sessions.
 The panel also keeps a visible reminder while the temporary password is in use.
 Login uses an 8-hour HttpOnly/SameSite=Strict session cookie, origin checks for writes,
 and a 5-failed-attempt / 15-minute login limit. Sessions and failed attempts are stored
