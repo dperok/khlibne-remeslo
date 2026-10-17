@@ -49,10 +49,18 @@ describe('Telegram location and two-bot correspondence', () => {
     expect(notifications.map((entry) => entry.body.chat_id).sort()).toEqual([470334534, 5711475783]);
     for (const notification of notifications) {
       expect(notification.body.text).toContain(ticket.message_text);
+      expect(notification.body.disable_notification).toBe(false);
       expect(notification.body.reply_markup).toEqual({ inline_keyboard: [[{ text: 'Відповісти', callback_data: `reply:${ticket.id}` }]] });
     }
     await service.retryDeliveries(call);
     expect(sent.filter((entry) => entry.token === 'admin-token')).toHaveLength(2);
+  });
+  it('sends admin service replies silently while visitor messages keep their notification setting', async () => {
+    await service.message('admin', { message_id: 80, text: '/cancel', from: { id: 470334534 }, chat: { id: 470334534, type: 'private' } }, call);
+    const adminReply = sent.find(entry => entry.token === 'admin-token' && entry.method === 'sendMessage');
+    expect(adminReply?.body.disable_notification).toBe(true);
+    await service.message('user', user('/support'), call);
+    expect(sent.filter(entry => entry.token === 'visitor-token').at(-1)?.body.disable_notification).toBeUndefined();
   });
   it('closes support after one saved message and requires /support for another', async () => {
     let active = false;

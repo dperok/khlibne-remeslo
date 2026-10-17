@@ -45,6 +45,15 @@ describe('Telegram polling transport', () => {
     expect(JSON.parse(lastPoll[1].body as string).offset).toBe(46);
     await service.onApplicationShutdown(); expect(service.status()[role]).toBe('stopped');
   });
+  it('silences command responses in the admin bot webhook transport', async () => {
+    vi.stubEnv('TELEGRAM_ADMIN_BOT_TOKEN', 'test-admin-token'); vi.stubEnv('TELEGRAM_MODE', 'webhook');
+    const fetcher = vi.fn(async () => new Response(JSON.stringify({ ok: true, result: {} }))); vi.stubGlobal('fetch', fetcher);
+    const commands = { handle: vi.fn(async () => 'Статус оновлено') } as unknown as BotCommandsService;
+    const service = new TelegramService(commands, interactions); service.onModuleInit();
+    await service.handleUpdate('admin', { update_id: 1, message: { text: '/status', from: { id: 470334534 }, chat: { id: 470334534, type: 'private' } } });
+    expect(JSON.parse((fetcher.mock.calls[0] as unknown as [string, RequestInit])[1].body as string).disable_notification).toBe(true);
+    await service.onApplicationShutdown();
+  });
   it('preserves an existing webhook rather than silently deleting it', async () => {
     vi.stubEnv('TELEGRAM_USER_BOT_TOKEN', 'test-token'); vi.stubEnv('TELEGRAM_ADMIN_BOT_TOKEN', '');
     const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify({ ok: true, result: url.endsWith('getWebhookInfo') ? { url: 'https://example.com/webhook' } : {} })));

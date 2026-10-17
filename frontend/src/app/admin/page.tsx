@@ -11,7 +11,7 @@ import { dayNames } from '../../../../backend/src/opening-hours';
 import { createCatalogSearch } from '../../../../backend/src/catalog-search';
 
 type EditableProduct = Product & { visible?: boolean };
-type PosterStatus = { configured: boolean; lastSuccessAt: string | null; lastError: string | null; summary: { matched: number; changed: number; manual: number; untracked: number } | null };
+type PosterStatus = { configured: boolean; lastSuccessAt: string | null; lastError: string | null; summary: { matched: number; changed: number; manual: number; untracked: number; learning?: number } | null };
 type Content = { products: EditableProduct[]; bakery: Bakery; bots: { user: string; admin: string }; temporaryPassword: boolean; poster: PosterStatus };
 const blank: EditableProduct = { id: '', name: '', category: 'bread', categoryLabel: 'Хліб', image: '/images/bread-hero.jpg', description: '', ingredients: '', allergens: '', tag: '', visible: true, available: true };
 const botStates: Record<string, string> = { webhook: 'Webhook увімкнено', disabled: 'Токен не додано', starting: 'Запускається', running: 'Працює', retrying: 'Повторне з’єднання', stopped: 'Зупинений', invalid_token: 'Невірний токен', polling_conflict: 'Вже запущений в іншому процесі', webhook_configured: 'Встановлено webhook', duplicate_tokens: 'Для ботів потрібні різні токени' };
@@ -113,9 +113,9 @@ export default function AdminPage() {
           if (draft.id) setDraft(next.products.find(product => product.id === draft.id) ?? { ...blank });
           setNotice(`Poster: оновлено ${result.changed} товарів, перевірено ${result.matched}.`);
         })}>{busy ? 'Оновлюємо…' : 'Оновити з Poster'}</button></div>
-        <p>Автоматичне оновлення — щодня вранці. Залишок понад 0 — є в наявності; 0 або менше — немає. Товари без окремого залишку не змінюються. Дані в Poster не редагуються.</p>
+        <p>Автоматичне оновлення — щодня вранці. Будь-яка помічена зміна залишку за останні 24 години означає «є в наявності», навіть якщо залишок від’ємний. Без змін протягом доби — «немає». Перші 24 години після початку спостереження попередня наявність зберігається. Зміни визначаються між оновленнями, а не в реальному часі. Товари без окремого залишку не змінюються. Дані в Poster не редагуються.</p>
         <p>{content.poster.configured ? 'API Poster підключено.' : 'Додайте API-ключ Poster у налаштування сервера.'} Останнє успішне оновлення: {content.poster.lastSuccessAt ? new Intl.DateTimeFormat('uk-UA', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Kyiv' }).format(new Date(content.poster.lastSuccessAt)) : 'ще не виконувалося'}.</p>
-        {content.poster.summary && <p>Перевірено: {content.poster.summary.matched}. Без окремого залишку: {content.poster.summary.untracked}. Ручний режим: {content.poster.summary.manual}.</p>}
+        {content.poster.summary && <p>Перевірено: {content.poster.summary.matched}. Без окремого залишку: {content.poster.summary.untracked}. Ручний режим: {content.poster.summary.manual}. Збір початкової історії: {content.poster.summary.learning ?? 0}.</p>}
         {content.poster.lastError && <p role="alert" className={styles.error}>{content.poster.lastError}</p>}
       </section>}
       {tab === 'products' && <div className={styles.columns}>

@@ -8,13 +8,30 @@ const menu = [{ product_id: '35', ingredient_id: '144' }];
 const stock = (quantity: string) => [{ ingredient_id: '144', ingredients_type: '2', ingredient_left: quantity }];
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 describe('Poster stock sync', () => {
-  it.each(['0.0000000', '-3.25'])('marks nonpositive stock %s unavailable using IDs, preserving other fields', quantity => {
-    const p = product(); const result = posterAvailability([p], menu, stock(quantity));
+  const now = new Date('2026-10-17T12:00:00Z');
+  const history = (quantity: number, changed: string | null = null) => new Map([['all:144:2', { stockKey: 'all:144:2', quantity, firstObservedAt: '2026-10-15T12:00:00Z', lastChangedAt: changed }]]);
+  it.each(['0.0000000', '-3.25', '8'])('marks unchanged stock %s unavailable after 24 hours regardless of sign', quantity => {
+    const p = product(); const result = posterAvailability([p], menu, stock(quantity), false, history(Number(quantity)), now);
     expect(result.products[0]).toEqual({ ...p, available: false }); expect(p.available).toBe(true);
     expect(result.summary).toMatchObject({ matched: 1, changed: 1, unavailable: 1 });
   });
-  it('restores availability when stock becomes positive', () => {
-    expect(posterAvailability([product(undefined, false)], menu, stock('0.1')).products[0].available).toBe(true);
+  it.each([[-3, '-4'], [-4, '-3'], [2, '0'], [0, '2']])('marks any observed change from %s to %s available', (previous, current) => {
+    const result = posterAvailability([product(undefined, false)], menu, stock(current), false, history(previous), now);
+    expect(result.products[0].available).toBe(true);
+    expect(result.observations[0].lastChangedAt).toBe(now.toISOString());
+  });
+  it('preserves initial availability during baseline collection without inventing a change', () => {
+    for (const available of [true, false]) {
+      const result = posterAvailability([product(undefined, available)], menu, stock('-3'), false, new Map(), now);
+      expect(result.products[0].available).toBe(available);
+      expect(result.observations[0].lastChangedAt).toBeNull(); expect(result.summary.learning).toBe(1);
+    }
+  });
+  it('expires at the exact 24-hour boundary and does not renew an unchanged quantity', () => {
+    const changed = '2026-10-16T12:00:00Z';
+    expect(posterAvailability([product()], menu, stock('8'), false, history(8, changed), now).products[0].available).toBe(false);
+    const recent = posterAvailability([product(undefined, false)], menu, stock('-4'), false, history(-4, '2026-10-17T11:00:00Z'), now);
+    expect(recent.products[0].available).toBe(true); expect(recent.observations[0].lastChangedAt).toBe('2026-10-17T11:00:00Z');
   });
   it('respects manual overrides and products outside Poster', () => {
     const products = [{ ...product(), availabilityMode: 'manual' as const }, product('custom')];
@@ -28,7 +45,7 @@ describe('Poster stock sync', () => {
     expect(posterAvailability([product()], menu, [{ ...stock('-3')[0], ingredients_type: '1' }]).summary.untracked).toBe(1);
   });
   it('uses the selected warehouse balance', () => {
-    expect(posterAvailability([product()], menu, [{ ...stock('8')[0], storage_ingredient_left: '0' }], true).products[0].available).toBe(false);
+    expect(posterAvailability([product(undefined, false)], menu, [{ ...stock('8')[0], storage_ingredient_left: '0' }], true, history(8), now).products[0].available).toBe(true);
   });
   it('rejects malformed and ambiguous balances without a partial update', () => {
     expect(() => posterAvailability([product()], menu, stock('oops'))).toThrow();
@@ -64,7 +81,7 @@ describe('Poster failure notifications', () => {
     const service = new PosterService(db); await service.notifyFailure(); await service.notifyFailure();
     expect(fetcher).toHaveBeenCalledTimes(2);
     expect(fetcher.mock.calls.map(call => JSON.parse((call as unknown as [string, RequestInit])[1].body as string).chat_id).sort()).toEqual(['470334534', '5711475783']);
-    for (const call of fetcher.mock.calls) expect((call as unknown as [string, RequestInit])[1].body).not.toContain('test-admin-token');
+    for (const call of fetcher.mock.calls) { const body = JSON.parse((call as unknown as [string, RequestInit])[1].body as string); expect(body.disable_notification).toBe(true); expect(JSON.stringify(body)).not.toContain('test-admin-token'); }
   });
   it('releases a failed delivery claim so the next run can retry', async () => {
     vi.stubEnv('TELEGRAM_ADMIN_BOT_TOKEN', 'test'); vi.stubEnv('TELEGRAM_ADMIN_IDS', '470334534');

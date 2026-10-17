@@ -4,8 +4,11 @@ import type { Content, Product } from './content.service.js';
 
 type MenuItem = { product_id: string; ingredient_id?: string };
 type Stock = { ingredient_id: string; ingredients_type: string; ingredient_left?: string; storage_ingredient_left?: string };
-export function posterAvailability(products: Product[], menu: MenuItem[], stocks: Stock[], storageSpecific = false) {
-  const summary = { matched: 0, changed: 0, available: 0, unavailable: 0, manual: 0, untracked: 0 };
+export type StockObservation = { stockKey: string; quantity: number; firstObservedAt: string; lastChangedAt: string | null };
+export function posterAvailability(products: Product[], menu: MenuItem[], stocks: Stock[], storageSpecific = false, history = new Map<string, StockObservation>(), now = new Date(), storage = 'all') {
+  const observations = new Map<string, StockObservation>();
+  const cutoff = now.getTime() - 24 * 60 * 60 * 1000;
+  const summary = { matched: 0, changed: 0, available: 0, unavailable: 0, manual: 0, untracked: 0, learning: 0 };
   const updated = products.map(product => {
     const id = /^poster-(?:dish|product)-(\d+)$/.exec(product.id)?.[1];
     if (!id || product.availabilityMode === 'manual') { summary.manual++; return product; }
@@ -18,13 +21,24 @@ export function posterAvailability(products: Product[], menu: MenuItem[], stocks
     if (balances.length !== 1) throw new Error('Ambiguous Poster balance');
     const raw = storageSpecific ? balances[0].storage_ingredient_left : balances[0].ingredient_left;
     if (typeof raw !== 'string' || !/^-?\d+(?:\.\d+)?$/.test(raw) || !Number.isFinite(Number(raw))) throw new Error('Invalid Poster balance');
-    const available = Number(raw) > 0;
+    const stockKey = `${storage}:${ingredient}:${balances[0].ingredients_type}`;
+    const previous = history.get(stockKey);
+    const quantity = Number(raw);
+    const observation: StockObservation = {
+      stockKey, quantity, firstObservedAt: previous?.firstObservedAt ?? now.toISOString(),
+      lastChangedAt: previous && previous.quantity !== quantity ? now.toISOString() : previous?.lastChangedAt ?? null,
+    };
+    observations.set(stockKey, observation);
+    // A first observation is a baseline, not evidence that stock changed.
+    const learning = !observation.lastChangedAt && Date.parse(observation.firstObservedAt) > cutoff;
+    if (learning) summary.learning++;
+    const available = learning ? product.available !== false : observation.lastChangedAt !== null && Date.parse(observation.lastChangedAt) > cutoff;
     summary.matched++; summary[available ? 'available' : 'unavailable']++;
     if ((product.available !== false) === available) return product;
     summary.changed++;
     return { ...product, available };
   });
-  return { products: updated, summary };
+  return { products: updated, summary, observations: [...observations.values()] };
 }
 
 @Injectable()
@@ -40,7 +54,7 @@ export class PosterService {
       const claim = await this.db.query<{ last_sent_at: Date }>(`INSERT INTO bakery_poster_alerts (admin_id,last_sent_at) VALUES ($1,now()) ON CONFLICT (admin_id) DO UPDATE SET last_sent_at=now() WHERE bakery_poster_alerts.last_sent_at < now()-interval '6 hours' RETURNING last_sent_at`, [admin]);
       if (!claim.rows?.length) return;
       try {
-        const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: admin, text: '⚠️ Не вдалося оновити наявність із Poster. На сайті збережено попередні дані. Перевірте синхронізацію в адмін-панелі. Повторне сповіщення — не частіше разу на 6 годин.', link_preview_options: { is_disabled: true } }), signal: AbortSignal.timeout(10000) });
+        const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: admin, disable_notification: true, text: '⚠️ Не вдалося оновити наявність із Poster. На сайті збережено попередні дані. Перевірте синхронізацію в адмін-панелі. Повторне сповіщення — не частіше разу на 6 годин.', link_preview_options: { is_disabled: true } }), signal: AbortSignal.timeout(10000) });
         const result = await response.json() as { ok?: boolean };
         if (!response.ok || !result.ok) throw new Error('Alert delivery failed');
       } catch {
@@ -78,8 +92,13 @@ export class PosterService {
         const result = await client.query<{ content: Content }>('SELECT content FROM bakery_site_content WHERE id=1 FOR UPDATE');
         if (!result.rows[0]) throw new Error('Missing catalogue');
         const content = result.rows[0].content;
-        const planned = posterAvailability(content.products, menu as MenuItem[], stocks as Stock[], !!process.env.POSTER_STORAGE_ID?.trim());
+        const snapshot = await client.query<{ stock_key: string; quantity: string; first_observed_at: Date; last_changed_at: Date | null }>('SELECT stock_key,quantity::text,first_observed_at,last_changed_at FROM bakery_poster_stock_history');
+        const history = new Map(snapshot.rows.map(row => [row.stock_key, { stockKey: row.stock_key, quantity: Number(row.quantity), firstObservedAt: row.first_observed_at.toISOString(), lastChangedAt: row.last_changed_at?.toISOString() ?? null }]));
+        const planned = posterAvailability(content.products, menu as MenuItem[], stocks as Stock[], !!process.env.POSTER_STORAGE_ID?.trim(), history, new Date(), process.env.POSTER_STORAGE_ID?.trim() || 'all');
         if (!planned.summary.matched) throw new Error('No matching balances');
+        await client.query(`INSERT INTO bakery_poster_stock_history(stock_key,quantity,first_observed_at,last_changed_at,last_observed_at)
+          SELECT "stockKey",quantity,"firstObservedAt","lastChangedAt",now() FROM jsonb_to_recordset($1::jsonb) AS x("stockKey" text,quantity numeric,"firstObservedAt" timestamptz,"lastChangedAt" timestamptz)
+          ON CONFLICT(stock_key) DO UPDATE SET quantity=excluded.quantity,first_observed_at=excluded.first_observed_at,last_changed_at=excluded.last_changed_at,last_observed_at=excluded.last_observed_at`, [JSON.stringify(planned.observations)]);
         if (planned.summary.changed) await client.query('UPDATE bakery_site_content SET content=$1::jsonb,updated_at=now() WHERE id=1', [JSON.stringify({ ...content, products: planned.products })]);
         await client.query('UPDATE bakery_poster_sync SET last_attempt_at=now(),last_success_at=now(),last_error=NULL,summary=$1::jsonb WHERE id=1', [JSON.stringify(planned.summary)]);
         await client.query('DELETE FROM bakery_poster_alerts');

@@ -21,7 +21,7 @@ export class BotInteractionsService {
   }
   private admins() { return [...new Set((process.env.TELEGRAM_ADMIN_IDS ?? '470334534,5711475783').split(',').map(Number).filter((id) => Number.isSafeInteger(id) && id > 0))]; }
   private async say(role: BotRole, chat: number | string, text: string, call: TelegramCall, extra: Record<string, unknown> = {}) {
-    return call<{ message_id: number }>(this.token(role), 'sendMessage', { chat_id: chat, text, link_preview_options: { is_disabled: true }, ...extra });
+    return call<{ message_id: number }>(this.token(role), 'sendMessage', { chat_id: chat, text, ...(role === 'admin' ? { disable_notification: true } : {}), link_preview_options: { is_disabled: true }, ...extra });
   }
   private async deliver(admin: number, call: TelegramCall) {
     const existing = this.deliveries.get(admin);
@@ -64,7 +64,7 @@ export class BotInteractionsService {
         for (let offset = 0; offset < text.length; offset += 3800) {
           const last = offset + 3800 >= text.length;
           const sent = await this.say('admin', admin, text.slice(offset, offset + 3800), call,
-            last ? { reply_markup: { inline_keyboard: [[{ text: 'Відповісти', callback_data: `reply:${ticket.id}` }]] } } : {});
+            { disable_notification: false, ...(last ? { reply_markup: { inline_keyboard: [[{ text: 'Відповісти', callback_data: `reply:${ticket.id}` }]] } } : {}) });
           lastId = sent.message_id;
         }
         await this.store.delivered(ticket.id, admin, lastId);
