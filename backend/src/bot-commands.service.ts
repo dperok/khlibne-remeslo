@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ContentService } from './content.service.js';
 
 export type BotRole = 'user' | 'admin';
-export type BotMessage = { message_id?: number; text?: string; reply_to_message?: { message_id: number }; from?: { id: number; first_name?: string; username?: string }; chat: { id: number; type: string } };
+export type BotMessage = { message_id?: number; text?: string; reply_to_message?: { message_id: number; text?: string; from?: { id: number; is_bot?: boolean } }; from?: { id: number; first_name?: string; username?: string }; chat: { id: number; type: string } };
 
 @Injectable()
 export class BotCommandsService {

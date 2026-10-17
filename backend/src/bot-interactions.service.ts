@@ -12,6 +12,7 @@ const menu = ['🥐 Випічка', '📍 Адреса', '☎️ Контакт
 export class BotInteractionsService {
   private readonly deliveries = new Map<number, Promise<void>>();
   private syncingReplyStatuses?: Promise<void>;
+  private userBotId?: number;
   constructor(private readonly store: SupportRepository, private readonly commands: BotCommandsService, private readonly content: ContentService) {}
   private token(role: BotRole) {
     const token = process.env[role === 'user' ? 'TELEGRAM_USER_BOT_TOKEN' : 'TELEGRAM_ADMIN_BOT_TOKEN']?.trim();
@@ -95,8 +96,11 @@ export class BotInteractionsService {
     if (await this.store.replied(admin, message.message_id)) return;
     const text = `Відповідь пекарні:\n\n${message.text}`;
     try {
-      for (let offset = 0; offset < text.length; offset += 4000) await this.say('user', ticket.user_id, text.slice(offset, offset + 4000), call,
-        { reply_parameters: { message_id: Number(ticket.source_message_id), allow_sending_without_reply: true } });
+      for (let offset = 0; offset < text.length; offset += 4000) {
+        const sent = await this.say('user', ticket.user_id, text.slice(offset, offset + 4000), call,
+          { reply_parameters: { message_id: Number(ticket.source_message_id), allow_sending_without_reply: true } });
+        await this.store.saveVisitorAnswer(ticket.id, sent.message_id);
+      }
     } catch {
       await this.say('admin', admin, 'Відповідь не доставлено. Можливо, відвідувач заблокував бота. Спробуйте пізніше.', call); return;
     }
@@ -105,6 +109,16 @@ export class BotInteractionsService {
     await this.syncReplyStatuses(call);
     await this.say('admin', admin, 'Відповідь надіслано відвідувачу. Режим відповіді завершено. Щоб відповісти знову, натисніть «Відповісти» під зверненням.', call,
       { reply_markup: { remove_keyboard: true } });
+  }
+  private async isReplyToAdmin(message: BotMessage, call: TelegramCall) {
+    const reply = message.reply_to_message;
+    if (!reply) return false;
+    if (await this.store.isVisitorReply(message.chat.id, reply.message_id)) return true;
+    // Older answers were sent before their Telegram IDs were persisted.
+    // Trust only Telegram's sender identity for this bot and its answer format.
+    if (!reply.from?.is_bot || !reply.text?.startsWith('Відповідь пекарні:\n\n')) return false;
+    this.userBotId ??= (await call<{ id: number }>(this.token('user'), 'getMe', {})).id;
+    return reply.from.id === this.userBotId;
   }
   async message(role: BotRole, message: BotMessage, call: TelegramCall): Promise<boolean> {
     const input = message.text?.trim() ?? '';
@@ -133,7 +147,10 @@ export class BotInteractionsService {
       if (command === '/cancel') { await this.say('user', message.chat.id, 'Режим зв’язку завершено. /support — звернутися знову.', call); return true; }
       return false;
     }
-    if (command.startsWith('/') || menu.includes(input) || !await this.store.inMode(message.chat.id)) return false;
+    if (command.startsWith('/') || menu.includes(input)) return false;
+    const inSupport = await this.store.inMode(message.chat.id);
+    const replyingToAdmin = !inSupport && await this.isReplyToAdmin(message, call);
+    if (!inSupport && !replyingToAdmin) return false;
     if (!message.text || !message.message_id) { await this.say('user', message.chat.id, 'Поки що надішліть звернення текстом, будь ласка.', call); return true; }
     const admins = this.admins();
     if (!admins.length || !process.env.TELEGRAM_ADMIN_BOT_TOKEN?.trim()) { await this.say('user', message.chat.id, 'Зв’язок із командою тимчасово недоступний. Спробуйте пізніше.', call); return true; }
@@ -142,7 +159,7 @@ export class BotInteractionsService {
     await this.store.setMode(message.chat.id, false);
     await Promise.all(admins.map((admin) => this.deliver(admin, call)));
     const delivered = await this.store.countDelivered(ticket.id);
-    await this.say('user', message.chat.id, (delivered === admins.length ? 'Повідомлення передано адміністраторам. Відповідь надійде сюди.' : 'Звернення збережено. Адміністраторам, які ще не підключили бота, воно надійде після підключення. Відповідь очікуйте тут.') + '\nРежим зв’язку завершено. /support — звернутися знову.', call);
+    await this.say('user', message.chat.id, (delivered === admins.length ? 'Повідомлення передано адміністраторам. Відповідь надійде сюди.' : 'Звернення збережено. Адміністраторам, які ще не підключили бота, воно надійде після підключення. Відповідь очікуйте тут.') + '\nРежим зв’язку завершено. Щоб продовжити розмову, відповідайте на повідомлення пекарні через «Відповісти». /support — нове звернення.', call);
     return true;
   }
 }

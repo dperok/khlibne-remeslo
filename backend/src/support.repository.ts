@@ -28,6 +28,12 @@ export class SupportRepository {
   async ticketForPrompt(admin: number, promptId: number) { return (await this.db.query<Ticket>("SELECT m.* FROM bakery_support_messages m JOIN bakery_support_prompts p ON p.ticket_id=m.id WHERE p.admin_id=$1 AND p.prompt_id=$2 AND p.created_at > now() - interval '24 hours'", [admin, promptId])).rows[0]; }
   async replied(admin: number, messageId: number) { return (await this.db.query('SELECT 1 FROM bakery_support_replies WHERE admin_id=$1 AND source_message_id=$2', [admin, messageId])).rowCount! > 0; }
   async markReplied(admin: number, messageId: number, ticket: string) { await this.db.query('INSERT INTO bakery_support_replies(admin_id,source_message_id,ticket_id) VALUES($1,$2,$3) ON CONFLICT DO NOTHING', [admin, messageId, ticket]); }
+  async saveVisitorAnswer(ticket: string, messageId: number) {
+    await this.db.query('INSERT INTO bakery_support_visitor_answers(user_id,message_id,ticket_id) SELECT user_id,$2,id FROM bakery_support_messages WHERE id=$1 ON CONFLICT DO NOTHING', [ticket, messageId]);
+  }
+  async isVisitorReply(userId: number, messageId: number) {
+    return (await this.db.query('SELECT 1 FROM bakery_support_visitor_answers a JOIN bakery_support_messages m ON m.id=a.ticket_id WHERE a.user_id=$1 AND m.user_id=$1 AND a.message_id=$2', [userId, messageId])).rowCount! > 0;
+  }
   async pendingReplyStatuses() {
     return (await this.db.query<{ ticket_id: string; admin_id: string; message_id: string; answered_by: string }>(`SELECT d.ticket_id, d.admin_id, d.message_id, r.admin_id AS answered_by
       FROM bakery_support_deliveries d

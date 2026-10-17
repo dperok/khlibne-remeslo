@@ -23,7 +23,7 @@ describe('Telegram location and two-bot correspondence', () => {
       pending: vi.fn(async (admin: number) => delivered.has(admin) ? [] : [ticket]),
       delivered: vi.fn(async (_ticket: string, admin: number) => { delivered.add(admin); }),
       countDelivered: vi.fn(async () => delivered.size), ticketForButton: vi.fn(async () => ticket),
-      savePrompt: vi.fn(), ticketForPrompt: vi.fn(async () => ticket), replied: vi.fn(async () => false), markReplied: vi.fn(), cancelPrompts: vi.fn(), pendingReplyStatuses: vi.fn(async () => []), replyStatusNotified: vi.fn() };
+      savePrompt: vi.fn(), ticketForPrompt: vi.fn(async () => ticket), replied: vi.fn(async () => false), markReplied: vi.fn(), saveVisitorAnswer: vi.fn(), isVisitorReply: vi.fn(async () => false), cancelPrompts: vi.fn(), pendingReplyStatuses: vi.fn(async () => []), replyStatusNotified: vi.fn() };
     content = { get: async () => ({ bakery }) } as unknown as ContentService;
     service = new BotInteractionsService(repository as unknown as SupportRepository, new BotCommandsService(content), content);
     sent = [];
@@ -77,6 +77,33 @@ describe('Telegram location and two-bot correspondence', () => {
     await service.retryDeliveries(call);
     expect(delivered.size).toBe(2);
   });
+  it('forwards replies to a saved administrator answer without reopening support mode', async () => {
+    repository.inMode.mockResolvedValue(false);
+    repository.isVisitorReply.mockResolvedValue(true);
+    const reply = { ...user('Дякую, а які є начинки?'), message_id: 8, reply_to_message: { message_id: 101 } };
+    expect(await service.message('user', reply, call)).toBe(true);
+    expect(repository.isVisitorReply).toHaveBeenCalledWith(12345, 101);
+    expect(repository.create).toHaveBeenCalledWith(12345, 8, 'Олена', reply.text, [470334534, 5711475783]);
+    expect(sent.filter((entry) => entry.token === 'admin-token')).toHaveLength(2);
+    expect(repository.setMode).not.toHaveBeenCalledWith(12345, true);
+  });
+  it('does not forward replies to unrelated bot messages or other visitors answers', async () => {
+    repository.inMode.mockResolvedValue(false);
+    repository.isVisitorReply.mockResolvedValue(false);
+    expect(await service.message('user', { ...user('Текст'), reply_to_message: { message_id: 101 } }, call)).toBe(false);
+    expect(repository.create).not.toHaveBeenCalled();
+    expect(sent).toHaveLength(0);
+  });
+  it('accepts older administrator answers only when Telegram identifies this visitor bot as sender', async () => {
+    repository.inMode.mockResolvedValue(false);
+    const legacyCall = (async (token, method, body) => method === 'getMe' ? { id: 456 } : call(token, method, body)) as TelegramCall;
+    const reply = { ...user('Продовження'), message_id: 8, reply_to_message: { message_id: 101, from: { id: 999, is_bot: true }, text: 'Відповідь пекарні:\n\nТак' } };
+    expect(await service.message('user', reply, legacyCall)).toBe(false);
+    expect(repository.create).not.toHaveBeenCalled();
+    reply.reply_to_message.from.id = 456;
+    expect(await service.message('user', reply, legacyCall)).toBe(true);
+    expect(repository.create).toHaveBeenCalledTimes(1);
+  });
   function callback(admin: number): BotCallback { return { id: 'callback-id', data: `reply:${ticket.id}`, from: { id: admin }, message: { message_id: 99, chat: { id: admin, type: 'private' } } }; }
   it('binds a reply prompt to the correct administrator and sends their reply through the visitor bot', async () => {
     await service.callback(callback(5711475783), call);
@@ -89,6 +116,7 @@ describe('Telegram location and two-bot correspondence', () => {
     expect(repository.ticketForPrompt).toHaveBeenCalledWith(5711475783, 102);
     expect(sent).toContainEqual(expect.objectContaining({ token: 'visitor-token', body: expect.objectContaining({ chat_id: '12345', text: 'Відповідь пекарні:\n\nТак, чекаємо на вас!', reply_parameters: { message_id: 7, allow_sending_without_reply: true } }) }));
     expect(repository.markReplied).toHaveBeenCalledWith(5711475783, 200, ticket.id);
+    expect(repository.saveVisitorAnswer).toHaveBeenCalledWith(ticket.id, expect.any(Number));
     expect(repository.cancelPrompts).toHaveBeenCalledWith(5711475783);
     expect(sent.at(-1)?.body.text).toContain('Режим відповіді завершено');
   });

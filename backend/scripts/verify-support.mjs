@@ -52,6 +52,17 @@ try {
   const count = requests.filter((entry) => entry.token === 'test-user').length;
   await restartedAgain.message('admin', reply, call);
   assert.equal(requests.filter((entry) => entry.token === 'test-user').length, count);
+  const persisted = new SupportRepository(db);
+  assert.equal(await persisted.isVisitorReply(userId, visitorAnswer.messageId), true);
+  assert.equal(await persisted.isVisitorReply(userId + 1, visitorAnswer.messageId), false);
+  assert.equal(await persisted.inMode(userId), false);
+  const followupService = new BotInteractionsService(persisted, commands, content);
+  await followupService.message('user', { ...message('Follow-up without /support'), message_id: 72,
+    reply_to_message: { message_id: visitorAnswer.messageId } }, call);
+  const followups = requests.filter((entry) => entry.token === 'test-admin' && entry.body.text?.includes('Follow-up without /support'));
+  assert.equal(followups.length, 2);
+  assert.ok(followups.every((entry) => entry.body.reply_markup?.inline_keyboard));
+  console.log('PASS visitor continuation: reply survives cold instances and reaches both admins without /support; other users cannot reuse it');
   console.log('PASS shared reply status: both admin messages marked answered and notifications recorded in Neon');
   console.log('PASS support: two distinct admin deliveries with reply buttons');
   console.log('PASS Neon routing: ticket and prompt survive new service instances; reply returns to the right visitor');
