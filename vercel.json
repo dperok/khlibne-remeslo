@@ -13,6 +13,7 @@
       "entrypoint": "src/main.ts",
       "installCommand": "npm ci",
       "buildCommand": "npm run build",
+      "outputDirectory": ".",
       "functions": { "src/main.ts": { "maxDuration": 60 } }
     }
   },
