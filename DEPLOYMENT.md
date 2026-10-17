@@ -2,6 +2,10 @@
 
 This repository contains a Next.js frontend and NestJS backend. `vercel.json` uses **Vercel Services (beta)** to deploy both from one repository and one project. Select the repository root (`.`), not `frontend`, when importing it. Let the checked-in service configuration control installation/build settings. Node.js 22+ is required.
 
+The production project is `kr-kh/khlibne-remeslo`, at https://khlibne-remeslo.vercel.app. Local CLI linking is stored in ignored `.vercel/`. Until a GitHub Login Connection is added to this Vercel account and the private repository is connected, deploy reviewed commits with `vercel deploy --prod --scope kr-kh`; a Git push alone does not deploy the site.
+
+Keep the backend service's `outputDirectory` set to `.`. Vercel Services otherwise flattens the Nest build output and loses the ESM package/dependency layout. The source entrypoint remains `src/main.ts`; the Nest build command checks the TypeScript application before Vercel packages it. Next.js catalogue/database handlers and homepage content explicitly wait for a runtime connection, because the backend service binding is unavailable during prerendering.
+
 The frontend calls NestJS through a private `BACKEND_URL` service binding. **Do not set BACKEND_URL manually on Vercel.** Public website/API requests stay in Next.js; only `/telegram/*` is routed directly to NestJS. The public hostname must allow Telegram requests without a Vercel login page.
 
 ## Environment variables

@@ -54,7 +54,10 @@ export default function BakerySite({ products, bakery, demo = false }: { product
           <p className={styles.eyebrow}><span />ХЛІБНЕ РЕМЕСЛО · ХАРКІВ</p>
           <h1 id="hero-title">Щастя —<br />у простих<br /><em>речах.</em></h1>
           <p className={styles.heroDescription}>У хрусткій скоринці. В ароматі випічки.<br />У хлібі, який хочеться розділити з близькими.</p>
-          <a href="#catalog" className={styles.primary}>Зазирнути до вітрини <Arrow /></a>
+          <div className={styles.heroActions}>
+            <a href="#catalog" className={styles.primary}>Зазирнути до вітрини <Arrow /></a>
+            <a href="#contacts" className={styles.secondary}>Зв’язатися з нами <Arrow /></a>
+          </div>
           <div className={styles.heroFoot}><span className={styles.smallSun}>✳</span><p>Трохи тепла<br /><strong>для вашого щодня</strong></p><a href="#location"><Pin />{bakery.address}</a></div>
         </div>
         <div className={styles.heroVisual}>
