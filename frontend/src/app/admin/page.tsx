@@ -1,5 +1,7 @@
 'use client';
 
+import WheatLogo from '../wheat-logo';
+
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import type { Bakery, Product } from '../bakery-site';
@@ -90,7 +92,7 @@ export default function AdminPage() {
   const filteredProducts = content?.products.filter((product) => matchesProduct(`${product.name} ${product.description}`) || (productQuery.trim() !== '' && product.id.toLowerCase().includes(productQuery.trim().toLowerCase()))) ?? [];
 
   return <div className={styles.page}>
-    <header className={styles.header}><Link href="/">🌾 Хлібне ремесло</Link><span>ПАНЕЛЬ АДМІНІСТРАТОРА</span><div className={styles.headerActions}><ThemeToggle />{content && <button disabled={busy} onClick={() => action(async () => { await api('logout', 'POST'); setContent(null); setPassword(''); })}>Вийти ↗</button>}</div></header>
+    <header className={styles.header}><Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><WheatLogo size={28} />Хлібне ремесло</Link><span>ПАНЕЛЬ АДМІНІСТРАТОРА</span><div className={styles.headerActions}><ThemeToggle />{content && <button disabled={busy} onClick={() => action(async () => { await api('logout', 'POST'); setContent(null); setPassword(''); })}>Вийти ↗</button>}</div></header>
     {loading ? <p className={styles.loading}>Завантажуємо панель…</p> : !content ? <main className={styles.login}>
       <p className={styles.eyebrow}>ВАША ПЕКАРНЯ ПІД КОНТРОЛЕМ</p><h1>Раді бачити <em>знову.</em></h1><p>Увійдіть, щоб керувати вітриною та контактами пекарні.</p>
       <form onSubmit={(event) => { event.preventDefault(); action(async () => { await api('login', 'POST', { password }); setPassword(''); await refresh(); }); }}>

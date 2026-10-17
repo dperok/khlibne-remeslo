@@ -8,13 +8,11 @@ import styles from './page.module.css';
 import { createCatalogSearch } from '../../../backend/src/catalog-search';
 import ThemeToggle from './theme-toggle';
 import { catalogGroups as categories, catalogGroup } from './catalog-groups';
+import Wheat from './wheat-logo';
 
 export type Product = { available?: boolean; price?: number; id: string; name: string; category: string; categoryLabel: string; image: string; description: string; ingredients: string; allergens: string; tag: string };
 export type Bakery = { name: string; city: string; address: string; fullAddress: string; mapsUrl: string; phone: string | null; instagram: string | null; email: string | null; latitude?: number; longitude?: number };
 
-function Wheat({ className }: { className?: string }) {
-  return <svg className={className} width="42" height="54" viewBox="0 0 42 54" fill="none" aria-hidden="true"><path d="M21 50V10M21 39C10 39 6 32 6 27c9 0 15 5 15 12Zm0-11C11 28 8 21 8 17c8 0 13 4 13 11Zm0-10c-6-5-6-11 0-16 6 5 6 11 0 16Zm0 21c11 0 15-7 15-12-9 0-15 5-15 12Zm0-11c10 0 13-7 13-11-8 0-13 4-13 11Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /></svg>;
-}
 function Arrow({ diagonal = false }: { diagonal?: boolean }) {
   return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d={diagonal ? 'M6 18 18 6M6 6h12v12' : 'M4 12h16m-6-6 6 6-6 6'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
