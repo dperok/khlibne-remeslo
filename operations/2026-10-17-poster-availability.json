@@ -1,0 +1,783 @@
+{
+  "appliedAt": "2026-10-17T11:38:41.672Z",
+  "source": "Poster warehouse balances, all 3 pages (246 rows)",
+  "rule": "Only uncheck availability when a uniquely matched product has stock <= 0; do not enable products or infer missing stock records.",
+  "posterModified": false,
+  "changedCount": 64,
+  "changes": [
+    {
+      "id": "poster-dish-75",
+      "name": "Багет «Зерновий» міні",
+      "posterStock": "-1 353,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-254",
+      "name": "Пампушка часник",
+      "posterStock": "-58,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-247",
+      "name": "Жульен",
+      "posterStock": "-95,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-235",
+      "name": "З капустою смажений пиріжок",
+      "posterStock": "-758,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-233",
+      "name": "З картоплею та гриб пиріжок смажений",
+      "posterStock": "-793,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-249",
+      "name": "Пиріжки з горохом",
+      "posterStock": "-31,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-171",
+      "name": "Слойка Мак Чарівниця",
+      "posterStock": "-54,408 кг",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-172",
+      "name": "Слойка Мак-Вишня Смаколик",
+      "posterStock": "-30,649 кг",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-125",
+      "name": "Слойка Сулугуні",
+      "posterStock": "-241,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-244",
+      "name": "Слойка Форастеро",
+      "posterStock": "-4,292 кг",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-234",
+      "name": "Смажений пиріжок з мʼясом",
+      "posterStock": "-1 153,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-251",
+      "name": "Бублик",
+      "posterStock": "-66,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-29",
+      "name": "Буше сніжок",
+      "posterStock": "-9,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-156",
+      "name": "Буше солона карамель",
+      "posterStock": "-349,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-30",
+      "name": "Буше ягідне",
+      "posterStock": "-438,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-255",
+      "name": "Веселка",
+      "posterStock": "-7,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-22",
+      "name": "Вишня в шоколаді",
+      "posterStock": "-66,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-28",
+      "name": "Вишня шоколад",
+      "posterStock": "-200,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-36",
+      "name": "Горішки",
+      "posterStock": "-10,516 кг",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-17",
+      "name": "Деліс",
+      "posterStock": "-21,023 кг",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-262",
+      "name": "Донат",
+      "posterStock": "-1,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-13",
+      "name": "Еклер каштан",
+      "posterStock": "-33,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-37",
+      "name": "Еклер солона карамель",
+      "posterStock": "-20,679 кг",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-173",
+      "name": "Заварне «Зебра»",
+      "posterStock": "-107,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-25",
+      "name": "Заварне з масляним кремом",
+      "posterStock": "-797,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-185",
+      "name": "Золотий горішок",
+      "posterStock": "-512,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-230",
+      "name": "Кекс «Лимончик»",
+      "posterStock": "-536,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-35",
+      "name": "Кекс творожний з малиною",
+      "posterStock": "0,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-24",
+      "name": "Київське тістечко",
+      "posterStock": "-224,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-183",
+      "name": "Манго пир",
+      "posterStock": "-1,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-34",
+      "name": "Медовик",
+      "posterStock": "-85,652 кг",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-180",
+      "name": "Мішутка тістечко",
+      "posterStock": "-2,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-174",
+      "name": "Пахлава",
+      "posterStock": "-151,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-184",
+      "name": "Печиво БОНСУАР",
+      "posterStock": "-1,138 кг",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-189",
+      "name": "Печиво Весняне",
+      "posterStock": "-84,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-10",
+      "name": "Печіво імбирне",
+      "posterStock": "-34,130 кг",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-266",
+      "name": "Пир Каштан",
+      "posterStock": "-7,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-126",
+      "name": "Пиріг «Груша»",
+      "posterStock": "-455,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-26",
+      "name": "Пінчер",
+      "posterStock": "-400,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-232",
+      "name": "Пончик",
+      "posterStock": "-599,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-236",
+      "name": "Пончик з заварним кремом",
+      "posterStock": "-1 056,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-179",
+      "name": "профітролі з завареним кремом",
+      "posterStock": "-0,500 кг",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-11",
+      "name": "Пташине молоко",
+      "posterStock": "-18,025 кг",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-23",
+      "name": "Пʼяна вишня",
+      "posterStock": "-21,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-257",
+      "name": "Сирник малина",
+      "posterStock": "-15,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-19",
+      "name": "Тартіні",
+      "posterStock": "-190,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-20",
+      "name": "Творожна корзинка",
+      "posterStock": "-221,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-268",
+      "name": "Тістечко Ємілія",
+      "posterStock": "0,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-250",
+      "name": "Тістечко Наталка",
+      "posterStock": "-96,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-263",
+      "name": "Торт «Естерхазі»",
+      "posterStock": "0,000 кг",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-264",
+      "name": "Торт «Захер»",
+      "posterStock": "-2,070 кг",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-170",
+      "name": "Торт «Снікерс»",
+      "posterStock": "-30,759 кг",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-267",
+      "name": "Торт «червона рута»",
+      "posterStock": "-0,122 кг",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-14",
+      "name": "Торт вафельний",
+      "posterStock": "-68,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-177",
+      "name": "Торт Екзотик",
+      "posterStock": "-11,099 кг",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-33",
+      "name": "Торт Наполеон",
+      "posterStock": "-103,552 кг",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-32",
+      "name": "Торт Прага",
+      "posterStock": "-29,285 кг",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-188",
+      "name": "Торт СМЕТАННИК",
+      "posterStock": "-32,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-31",
+      "name": "Торт Шер-амі",
+      "posterStock": "-32,879 кг",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-178",
+      "name": "Торт Шоколадний мікс",
+      "posterStock": "-30,896 кг",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-16",
+      "name": "Трубочка вершки",
+      "posterStock": "-370,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-15",
+      "name": "Трубочка домашня",
+      "posterStock": "-2,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-21",
+      "name": "Шоколадна картопля",
+      "posterStock": "-150,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    },
+    {
+      "id": "poster-product-256",
+      "name": "Шоколадниця",
+      "posterStock": "0,00 шт.",
+      "previousAvailable": true,
+      "available": false
+    }
+  ],
+  "positiveStockProducts": [
+    {
+      "id": "poster-product-175",
+      "name": "Трубочка вершковий крем Мон-шер",
+      "stock": "13,00 шт."
+    },
+    {
+      "id": "poster-product-176",
+      "name": "Трубочка Іриска Мон-шер",
+      "stock": "8,00 шт."
+    }
+  ],
+  "productsWithoutSeparateStock": [
+    {
+      "id": "poster-dish-7",
+      "name": "Багет 450"
+    },
+    {
+      "id": "poster-dish-55",
+      "name": "Багет 450 кунжут"
+    },
+    {
+      "id": "poster-dish-54",
+      "name": "Багет міні 200"
+    },
+    {
+      "id": "poster-dish-61",
+      "name": "Батон Молочний"
+    },
+    {
+      "id": "poster-dish-56",
+      "name": "Батон Слобожанський"
+    },
+    {
+      "id": "poster-dish-227",
+      "name": "Булочка «Бургер» 700"
+    },
+    {
+      "id": "poster-dish-111",
+      "name": "Булочка «Бургер» вил"
+    },
+    {
+      "id": "poster-dish-112",
+      "name": "Булочка «Бургер» мал"
+    },
+    {
+      "id": "poster-dish-209",
+      "name": "Булочка біла"
+    },
+    {
+      "id": "poster-dish-210",
+      "name": "Булочка темна"
+    },
+    {
+      "id": "poster-dish-69",
+      "name": "Гріссіні Кунжут"
+    },
+    {
+      "id": "poster-dish-68",
+      "name": "Гріссіні Пармезан"
+    },
+    {
+      "id": "poster-dish-67",
+      "name": "Гріссіні Прованські трави"
+    },
+    {
+      "id": "poster-dish-70",
+      "name": "Гріссіні Часник"
+    },
+    {
+      "id": "poster-dish-48",
+      "name": "На заквасці"
+    },
+    {
+      "id": "poster-dish-120",
+      "name": "На сироватці"
+    },
+    {
+      "id": "poster-dish-151",
+      "name": "Хліб «Мюнхенський»"
+    },
+    {
+      "id": "poster-dish-52",
+      "name": "Хліб білий 550"
+    },
+    {
+      "id": "poster-dish-53",
+      "name": "Хліб білий міні 350"
+    },
+    {
+      "id": "poster-dish-72",
+      "name": "Хліб Бородинський"
+    },
+    {
+      "id": "poster-dish-73",
+      "name": "Хліб Гречаний з цибулею"
+    },
+    {
+      "id": "poster-dish-58",
+      "name": "Хліб з висівками"
+    },
+    {
+      "id": "poster-dish-149",
+      "name": "Хліб медовий з гарбуз"
+    },
+    {
+      "id": "poster-dish-71",
+      "name": "Хліб Ризький"
+    },
+    {
+      "id": "poster-dish-62",
+      "name": "Хліб Український"
+    },
+    {
+      "id": "poster-dish-148",
+      "name": "Царський з насінням соняшника"
+    },
+    {
+      "id": "poster-dish-147",
+      "name": "Царський з чорносливом"
+    },
+    {
+      "id": "poster-dish-274",
+      "name": "Цільнозерновий Зерно"
+    },
+    {
+      "id": "poster-dish-273",
+      "name": "Цільнозерновий На заквасці"
+    },
+    {
+      "id": "poster-dish-145",
+      "name": "Чіабата с сиром"
+    },
+    {
+      "id": "poster-dish-108",
+      "name": "Міні - піца «Курка-ананас»"
+    },
+    {
+      "id": "poster-dish-101",
+      "name": "Міні - піца «Шинка»"
+    },
+    {
+      "id": "poster-dish-138",
+      "name": "Пиріг «з лівером»"
+    },
+    {
+      "id": "poster-dish-105",
+      "name": "Пиріг «Капуста»"
+    },
+    {
+      "id": "poster-dish-104",
+      "name": "Пиріг «Картопля—гриби»"
+    },
+    {
+      "id": "poster-dish-106",
+      "name": "Пиріг «Курка — гриби»"
+    },
+    {
+      "id": "poster-dish-102",
+      "name": "Пиріг «Мʼясо»"
+    },
+    {
+      "id": "poster-dish-82",
+      "name": "Пиріг «Печінка»"
+    },
+    {
+      "id": "poster-dish-103",
+      "name": "Пиріг «Рис—яйце»"
+    },
+    {
+      "id": "poster-dish-118",
+      "name": "Сосиска «Мисливська»"
+    },
+    {
+      "id": "poster-dish-113",
+      "name": "Сосиска «Фірмова»"
+    },
+    {
+      "id": "poster-dish-83",
+      "name": "Сосиска в тісті"
+    },
+    {
+      "id": "poster-dish-265",
+      "name": "Сосиска з морквою"
+    },
+    {
+      "id": "poster-dish-110",
+      "name": "Хачапурі «Курка—гриби»"
+    },
+    {
+      "id": "poster-dish-97",
+      "name": "Хачапурі з сиром"
+    },
+    {
+      "id": "poster-dish-95",
+      "name": "Булка «Цукрова»"
+    },
+    {
+      "id": "poster-dish-76",
+      "name": "Булочка «Ванільна»"
+    },
+    {
+      "id": "poster-dish-107",
+      "name": "Булочка «Вишня — крем»"
+    },
+    {
+      "id": "poster-dish-86",
+      "name": "Булочка «Коса»"
+    },
+    {
+      "id": "poster-dish-87",
+      "name": "Булочка «Коса» три начинки"
+    },
+    {
+      "id": "poster-dish-100",
+      "name": "Булочка «Роза» з сиром"
+    },
+    {
+      "id": "poster-dish-85",
+      "name": "Булочка «Сімейна»"
+    },
+    {
+      "id": "poster-dish-116",
+      "name": "Булочка «Смородина—шоколад»"
+    },
+    {
+      "id": "poster-dish-99",
+      "name": "Булочка «Яблуко—Кориця»"
+    },
+    {
+      "id": "poster-dish-84",
+      "name": "Булочка з корицею"
+    },
+    {
+      "id": "poster-dish-98",
+      "name": "Віночок «Маковий»"
+    },
+    {
+      "id": "poster-dish-115",
+      "name": "Віночок «Малина»"
+    },
+    {
+      "id": "poster-dish-117",
+      "name": "Завиванець «Крем—шоколад»"
+    },
+    {
+      "id": "poster-dish-90",
+      "name": "Завиванець «Сир»"
+    },
+    {
+      "id": "poster-dish-187",
+      "name": "Кекс лимонно-маковий з цитрусовою помадкою"
+    },
+    {
+      "id": "poster-dish-212",
+      "name": "Кекс лимонно-маковийб без цукатів"
+    },
+    {
+      "id": "poster-dish-140",
+      "name": "Пиріг « Терен»"
+    },
+    {
+      "id": "poster-dish-80",
+      "name": "Пиріг «Абрикос»"
+    },
+    {
+      "id": "poster-dish-77",
+      "name": "Пиріг «Вишня»"
+    },
+    {
+      "id": "poster-dish-81",
+      "name": "Пиріг «Персик»"
+    },
+    {
+      "id": "poster-dish-168",
+      "name": "Пиріг «полуниця»"
+    },
+    {
+      "id": "poster-dish-79",
+      "name": "Пиріг «Смородина»"
+    },
+    {
+      "id": "poster-dish-261",
+      "name": "Пиріг «Шарлотка»"
+    },
+    {
+      "id": "poster-dish-78",
+      "name": "Пиріг «Яблуко»"
+    },
+    {
+      "id": "poster-dish-96",
+      "name": "Рогалик «Повидло»"
+    },
+    {
+      "id": "poster-dish-114",
+      "name": "Рогалик «Шоколад—Арахіс»"
+    },
+    {
+      "id": "poster-dish-92",
+      "name": "Рулет «Абрикос»"
+    },
+    {
+      "id": "poster-dish-89",
+      "name": "Рулет «Вишня»"
+    },
+    {
+      "id": "poster-dish-88",
+      "name": "Рулет «Мак»"
+    },
+    {
+      "id": "poster-dish-94",
+      "name": "Рулет «Малина»"
+    },
+    {
+      "id": "poster-dish-93",
+      "name": "Рулет «Персик»"
+    },
+    {
+      "id": "poster-dish-91",
+      "name": "Рулет «Яблуко»"
+    },
+    {
+      "id": "poster-dish-109",
+      "name": "Рулетик з маком"
+    }
+  ]
+}
