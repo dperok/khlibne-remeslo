@@ -14,10 +14,12 @@ import { AnalyticsController } from './analytics.controller.js';
 import { SupportRepository } from './support.repository.js';
 import { BotInteractionsService } from './bot-interactions.service.js';
 import { TelegramWebhookController } from './telegram-webhook.controller.js';
+import { PosterService } from './poster.service.js';
+import { PosterController } from './poster.controller.js';
 
 @Module({
   imports: [],
-  controllers: [AppController, DatabaseController, CatalogController, AdminController, AnalyticsController, TelegramWebhookController],
-  providers: [AppService, DatabaseService, ContentService, AdminAuthService, BotCommandsService, TelegramService, AnalyticsService, SupportRepository, BotInteractionsService],
+  controllers: [AppController, DatabaseController, CatalogController, AdminController, AnalyticsController, TelegramWebhookController, PosterController],
+  providers: [AppService, DatabaseService, ContentService, AdminAuthService, BotCommandsService, TelegramService, AnalyticsService, SupportRepository, BotInteractionsService, PosterService],
 })
 export class AppModule {}

@@ -46,6 +46,12 @@ The daily Vercel cron retries pending support deliveries and cleans expired runt
 
 Webhook requests require the Telegram secret header. Updates are serialized per bot/chat and successful update IDs are persisted, including across cold starts. As with any external messaging API, a crash between sending a Telegram message and recording the result can still result in a retry; this is not an exactly-once delivery guarantee.
 
+## Poster availability
+
+Set `POSTER_API_TOKEN` to the existing personal integration key in Production. Optional `POSTER_STORAGE_ID` selects one warehouse; otherwise totals across all warehouses are used. The backend makes only GET requests to the fixed `menu.getProducts` and `storage.getStorageLeftovers` endpoints, including zero balances. It matches catalogue Poster IDs to menu IDs, then uses their ingredient IDs to find stock. A stock above zero enables availability; zero or negative disables it. Missing/untracked records and manual overrides are preserved. Prices, product details and Poster itself are not modified.
+
+Migration `007_poster_sync.sql` persists the last successful sync, counts and a sanitized last error. API failures retain the previous catalogue. A transaction lock prevents overlapping runs. The protected daily cron `/poster/sync` runs at 05:00 UTC (Hobby scheduling may be delayed within that hour); use the authenticated admin button for an immediate refresh. In each product, choose «Вручну» to override availability or «Автоматично з Poster» to resume synchronization.
+
 ## Return to local polling
 
 Run `npm run telegram:webhooks -- --delete`, remove `TELEGRAM_MODE=webhook` locally, then start the local server. Avoid running multiple polling instances for the same bot. This does not delete queued messages.

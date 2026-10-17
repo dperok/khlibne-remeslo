@@ -18,8 +18,9 @@
     }
   },
   "rewrites": [
+    { "source": "/poster/:path*", "destination": { "service": "backend" } },
     { "source": "/telegram/:path*", "destination": { "service": "backend" } },
     { "source": "/(.*)", "destination": { "service": "frontend" } }
   ],
-  "crons": [{ "path": "/telegram/retry", "schedule": "0 7 * * *" }]
+  "crons": [{ "path": "/telegram/retry", "schedule": "0 7 * * *" }, { "path": "/poster/sync", "schedule": "0 5 * * *" }]
 }

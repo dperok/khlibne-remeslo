@@ -6,6 +6,7 @@ import { AdminAuthService } from './admin-auth.service.js';
 import { ContentService } from './content.service.js';
 import { TelegramService } from './telegram.service.js';
 import { AnalyticsService } from './analytics.service.js';
+import { PosterService } from './poster.service.js';
 
 describe('Admin HTTP authorization', () => {
   let app: INestApplication;
@@ -15,6 +16,7 @@ describe('Admin HTTP authorization', () => {
       { provide: ContentService, useValue: { get: async () => ({ products: [], bakery: {} }), saveProduct: vi.fn() } },
       { provide: TelegramService, useValue: { status: () => ({ user: 'disabled', admin: 'disabled' }) } },
       { provide: AnalyticsService, useValue: { summary: () => ({ days: [] }) } },
+      { provide: PosterService, useValue: { status: async () => ({ configured: true }), sync: async () => ({ changed: 0 }) } },
     ] }).compile();
     app = module.createNestApplication(); await app.init();
   });
@@ -31,11 +33,14 @@ describe('Admin HTTP authorization', () => {
     await request(app.getHttpServer()).get('/admin/analytics').expect(401);
     await request(app.getHttpServer()).post('/admin/products').set('Origin', origin).send({}).expect(401);
     await request(app.getHttpServer()).put('/admin/bakery').set('Origin', origin).send({}).expect(401);
+    await request(app.getHttpServer()).post('/admin/poster/sync').set('Origin', origin).expect(401);
   });
   it('requires the right origin and invalidates a session after logout', async () => {
     const cookie = await login();
     await request(app.getHttpServer()).get('/admin/content').set('Cookie', cookie).expect(200);
     await request(app.getHttpServer()).put('/admin/products/id').set('Cookie', cookie).set('Origin', 'https://evil.example').send({}).expect(403);
+    await request(app.getHttpServer()).post('/admin/poster/sync').set('Cookie', cookie).set('Origin', 'https://evil.example').expect(403);
+    await request(app.getHttpServer()).post('/admin/poster/sync').set('Cookie', cookie).set('Origin', origin).expect(201);
     await request(app.getHttpServer()).get('/admin/content').set('Cookie', 'bakery_admin=' + 'a'.repeat(64)).expect(401);
     await request(app.getHttpServer()).post('/admin/logout').set('Cookie', cookie).set('Origin', origin).expect(201);
     await request(app.getHttpServer()).get('/admin/content').set('Cookie', cookie).expect(401);

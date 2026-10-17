@@ -4,10 +4,11 @@ import { AdminAuthService } from './admin-auth.service.js';
 import { ContentService } from './content.service.js';
 import { TelegramService } from './telegram.service.js';
 import { AnalyticsService } from './analytics.service.js';
+import { PosterService } from './poster.service.js';
 
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly auth: AdminAuthService, private readonly content: ContentService, private readonly telegram: TelegramService, private readonly analytics: AnalyticsService) {}
+  constructor(private readonly auth: AdminAuthService, private readonly content: ContentService, private readonly telegram: TelegramService, private readonly analytics: AnalyticsService, private readonly poster: PosterService) {}
 
   @Get('analytics')
   @Header('Cache-Control', 'no-store')
@@ -27,10 +28,13 @@ export class AdminController {
   @Header('Cache-Control', 'no-store')
   async getContent(@Req() req: Request) {
     await this.auth.requireSession(req);
-    return { ...await this.content.get(), bots: this.telegram.status(), temporaryPassword: this.auth.temporaryPassword };
+    return { ...await this.content.get(), bots: this.telegram.status(), temporaryPassword: this.auth.temporaryPassword, poster: await this.poster.status() };
   }
 
   private async authorize(req: Request) { await this.auth.requireSession(req); this.auth.checkOrigin(req); }
+
+  @Post('poster/sync')
+  async syncPoster(@Req() req: Request) { await this.authorize(req); return this.poster.sync(); }
 
   @Post('products')
   async create(@Req() req: Request, @Body() body: Record<string, unknown>) { await this.authorize(req); return this.content.saveProduct(undefined, body); }

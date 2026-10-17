@@ -10,7 +10,7 @@ import ThemeToggle from './theme-toggle';
 import { catalogGroups as categories, catalogGroup } from './catalog-groups';
 import Wheat from './wheat-logo';
 
-export type Product = { available?: boolean; price?: number; id: string; name: string; category: string; categoryLabel: string; image: string; description: string; ingredients: string; allergens: string; tag: string };
+export type Product = { available?: boolean; availabilityMode?: 'poster' | 'manual'; price?: number; id: string; name: string; category: string; categoryLabel: string; image: string; description: string; ingredients: string; allergens: string; tag: string };
 export type Bakery = { name: string; city: string; address: string; fullAddress: string; mapsUrl: string; phone: string | null; instagram: string | null; email: string | null; latitude?: number; longitude?: number };
 
 function Arrow({ diagonal = false }: { diagonal?: boolean }) {

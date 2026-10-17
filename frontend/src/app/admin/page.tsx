@@ -10,7 +10,8 @@ import ThemeToggle from '../theme-toggle';
 import { createCatalogSearch } from '../../../../backend/src/catalog-search';
 
 type EditableProduct = Product & { visible?: boolean };
-type Content = { products: EditableProduct[]; bakery: Bakery; bots: { user: string; admin: string }; temporaryPassword: boolean };
+type PosterStatus = { configured: boolean; lastSuccessAt: string | null; lastError: string | null; summary: { matched: number; changed: number; manual: number; untracked: number } | null };
+type Content = { products: EditableProduct[]; bakery: Bakery; bots: { user: string; admin: string }; temporaryPassword: boolean; poster: PosterStatus };
 const blank: EditableProduct = { id: '', name: '', category: 'bread', categoryLabel: 'Хліб', image: '/images/bread-hero.jpg', description: '', ingredients: '', allergens: '', tag: '', visible: true, available: true };
 const botStates: Record<string, string> = { webhook: 'Webhook увімкнено', disabled: 'Токен не додано', starting: 'Запускається', running: 'Працює', retrying: 'Повторне з’єднання', stopped: 'Зупинений', invalid_token: 'Невірний токен', polling_conflict: 'Вже запущений в іншому процесі', webhook_configured: 'Встановлено webhook', duplicate_tokens: 'Для ботів потрібні різні токени' };
 type Day = { day: string; visitors: number; sessions: number; averageActiveMs: number };
@@ -86,7 +87,7 @@ export default function AdminPage() {
       if (problem.status === 401) setContent(null);
     } finally { setBusy(false); }
   }
-  async function refresh() { const data = await api('content'); setContent(data); setContacts(data.bakery); }
+  async function refresh(): Promise<Content> { const data = await api('content'); setContent(data); setContacts(data.bakery); return data; }
   const field = (key: keyof EditableProduct, value: string | boolean | number | undefined) => setDraft((previous) => ({ ...previous, [key]: value }));
   const matchesProduct = createCatalogSearch(productQuery);
   const filteredProducts = content?.products.filter((product) => matchesProduct(`${product.name} ${product.description}`) || (productQuery.trim() !== '' && product.id.toLowerCase().includes(productQuery.trim().toLowerCase()))) ?? [];
@@ -105,6 +106,17 @@ export default function AdminPage() {
       <nav className={styles.tabs} aria-label="Розділи панелі">{[['products', 'Каталог'], ['contacts', 'Контакти й адреса'], ['analytics', 'Відвідуваність'], ['bots', 'Telegram-боти']].map(([id, label]) => <button key={id} aria-pressed={tab === id} onClick={() => { setTab(id); setNotice(''); setError(''); }}>{label}</button>)}</nav>
       <p role="alert" className={styles.error}>{error}</p><p role="status" className={styles.success}>{notice}</p>
       {tab === 'analytics' && <AnalyticsPanel />}
+      {tab === 'products' && <section className={styles.panel} style={{ marginBottom: 24 }}>
+        <div className={styles.panelHeading}><h2>Наявність із Poster</h2><button disabled={busy || !content.poster.configured} onClick={() => action(async () => {
+          const result = await api('poster/sync', 'POST'); const next = await refresh();
+          if (draft.id) setDraft(next.products.find(product => product.id === draft.id) ?? { ...blank });
+          setNotice(`Poster: оновлено ${result.changed} товарів, перевірено ${result.matched}.`);
+        })}>{busy ? 'Оновлюємо…' : 'Оновити з Poster'}</button></div>
+        <p>Автоматичне оновлення — щодня вранці. Залишок понад 0 — є в наявності; 0 або менше — немає. Товари без окремого залишку не змінюються. Дані в Poster не редагуються.</p>
+        <p>{content.poster.configured ? 'API Poster підключено.' : 'Додайте API-ключ Poster у налаштування сервера.'} Останнє успішне оновлення: {content.poster.lastSuccessAt ? new Intl.DateTimeFormat('uk-UA', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Kyiv' }).format(new Date(content.poster.lastSuccessAt)) : 'ще не виконувалося'}.</p>
+        {content.poster.summary && <p>Перевірено: {content.poster.summary.matched}. Без окремого залишку: {content.poster.summary.untracked}. Ручний режим: {content.poster.summary.manual}.</p>}
+        {content.poster.lastError && <p role="alert" className={styles.error}>{content.poster.lastError}</p>}
+      </section>}
       {tab === 'products' && <div className={styles.columns}>
         <section className={styles.panel}><div className={styles.panelHeading}><h2>Вітрина <small>{content.products.length}</small></h2><button disabled={busy} onClick={() => { setDraft({ ...blank }); setNotice(''); }}>+ Новий товар</button></div>
           <label className={styles.productSearch}>Пошук товарів<input type="search" placeholder="Назва або ID товару" value={productQuery} onChange={(event) => setProductQuery(event.target.value)} /></label>
@@ -126,7 +138,9 @@ export default function AdminPage() {
             <label>Склад<textarea maxLength={1500} rows={2} value={draft.ingredients} onChange={(event) => field('ingredients', event.target.value)} /></label>
             <label>Алергени<input maxLength={500} value={draft.allergens} onChange={(event) => field('allergens', event.target.value)} /></label>
             <label className={styles.checkbox}><input type="checkbox" checked={draft.visible !== false} onChange={(event) => field('visible', event.target.checked)} />Показувати у вітрині</label>
-            <label className={styles.checkbox}><input type="checkbox" checked={draft.available !== false} onChange={(event) => field('available', event.target.checked)} />Є в наявності</label>
+            <label>Керування наявністю<select value={draft.availabilityMode ?? (draft.id.startsWith('poster-') ? 'poster' : 'manual')} onChange={(event) => field('availabilityMode', event.target.value)}><option value="manual">Вручну</option>{draft.id.startsWith('poster-') && <option value="poster">Автоматично з Poster</option>}</select></label>
+            <label className={styles.checkbox}><input type="checkbox" disabled={draft.id.startsWith('poster-') && draft.availabilityMode !== 'manual'} checked={draft.available !== false} onChange={(event) => field('available', event.target.checked)} />Є в наявності</label>
+            <p>Для зміни галочки власноруч оберіть режим «Вручну». Техкарти без окремих залишків також можна налаштовувати вручну.</p>
             <div className={styles.actions}><button className={styles.primary} disabled={busy}>{busy ? 'Зберігаємо…' : 'Зберегти товар'}</button>{draft.id && <button type="button" className={styles.danger} disabled={busy} onClick={() => {
               if (window.confirm(`Видалити «${draft.name}» з каталогу?`)) action(async () => { await api(`products/${draft.id}`, 'DELETE'); await refresh(); setDraft({ ...blank }); setNotice('Товар видалено.'); });
             }}>Видалити</button>}</div>

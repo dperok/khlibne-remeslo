@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { DatabaseService } from './database.service.js';
 import { bakery, catalog } from './catalog.data.js';
 
-export type Product = (typeof catalog)[number] & { visible?: boolean; price?: number; available?: boolean };
+export type Product = (typeof catalog)[number] & { visible?: boolean; price?: number; available?: boolean; availabilityMode?: 'poster' | 'manual' };
 export type Bakery = Omit<typeof bakery, 'phone' | 'email' | 'instagram'> & { phone: string | null; email: string | null; instagram: string | null };
 export type Content = { products: Product[]; bakery: Bakery; demo: boolean };
 
@@ -46,11 +46,12 @@ export class ContentService {
     if (!/^\/images\/[a-zA-Z0-9_-]+\.(jpg|jpeg|png|webp)$/.test(image)) httpsUrl(image, 'image');
     if (typeof body.visible !== 'boolean') throw new BadRequestException('Некоректне поле visible');
     if (body.available !== undefined && typeof body.available !== 'boolean') throw new BadRequestException('Некоректне поле available');
+    if (body.availabilityMode !== undefined && body.availabilityMode !== 'poster' && body.availabilityMode !== 'manual') throw new BadRequestException('Некоректний режим наявності');
     const price = body.price == null || body.price === '' ? undefined : Number(body.price);
     if (price !== undefined && (!Number.isFinite(price) || price < 0 || price > 100000)) throw new BadRequestException('Некоректна ціна');
     return { id, price, name: text(body.name, 'name', 120), category, categoryLabel: labels[category], image,
       description: text(body.description, 'description', 1500, true), ingredients: text(body.ingredients, 'ingredients', 1500, true),
-      allergens: text(body.allergens, 'allergens', 500, true), tag: text(body.tag, 'tag', 80, true), visible: body.visible, available: body.available !== false };
+      allergens: text(body.allergens, 'allergens', 500, true), tag: text(body.tag, 'tag', 80, true), visible: body.visible, available: body.available !== false, ...(body.availabilityMode ? { availabilityMode: body.availabilityMode as 'poster' | 'manual' } : {}) };
   }
 
   async saveProduct(id: string | undefined, body: Record<string, unknown>) {
@@ -61,7 +62,10 @@ export class ContentService {
       if (index < 0) {
         if (content.products.length >= 1000) throw new BadRequestException('Максимум 1000 товарів');
         content.products.push(product);
-      } else content.products[index] = product;
+      } else {
+        if (!product.availabilityMode && content.products[index].availabilityMode) product.availabilityMode = content.products[index].availabilityMode;
+        content.products[index] = product;
+      }
     });
     return product;
   }

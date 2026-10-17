@@ -4,7 +4,7 @@ type Context = { params: Promise<{ path: string[] }> };
 async function proxy(request: Request, context: Context) {
   const { path } = await context.params;
   const route = path.join('/');
-  if (!/^(login|logout|session|content|analytics|bakery|products(?:\/[a-zA-Z0-9-]+)?)$/.test(route)) return Response.json({ message: 'Не знайдено' }, { status: 404 });
+  if (!/^(login|logout|session|content|analytics|bakery|poster\/sync|products(?:\/[a-zA-Z0-9-]+)?)$/.test(route)) return Response.json({ message: 'Не знайдено' }, { status: 404 });
   if (!['GET', 'HEAD'].includes(request.method)) {
     const origin = request.headers.get('origin');
     const expected = process.env.PUBLIC_SITE_URL ?? new URL(request.url).origin;
@@ -14,7 +14,7 @@ async function proxy(request: Request, context: Context) {
   if (body && body.length > 30000) return Response.json({ message: 'Завеликий запит' }, { status: 413 });
   try {
     const response = await fetch(backendUrl(`/admin/${route}`), {
-      method: request.method, body, cache: 'no-store', signal: AbortSignal.timeout(15000),
+      method: request.method, body, cache: 'no-store', signal: AbortSignal.timeout(route === 'poster/sync' ? 45000 : 15000),
       headers: { 'Content-Type': 'application/json', Cookie: request.headers.get('cookie') ?? '', Origin: request.headers.get('origin') ?? '' },
     });
     const headers = new Headers({ 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
