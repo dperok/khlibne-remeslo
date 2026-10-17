@@ -9,9 +9,11 @@ import { createCatalogSearch } from '../../../backend/src/catalog-search';
 import ThemeToggle from './theme-toggle';
 import { catalogGroups as categories, catalogGroup } from './catalog-groups';
 import Wheat from './wheat-logo';
+import OpeningSchedule from './opening-schedule';
+import type { OpeningHours } from '../../../backend/src/opening-hours';
 
 export type Product = { available?: boolean; availabilityMode?: 'poster' | 'manual'; price?: number; id: string; name: string; category: string; categoryLabel: string; image: string; description: string; ingredients: string; allergens: string; tag: string };
-export type Bakery = { name: string; city: string; address: string; fullAddress: string; mapsUrl: string; phone: string | null; instagram: string | null; email: string | null; latitude?: number; longitude?: number };
+export type Bakery = { name: string; city: string; address: string; fullAddress: string; mapsUrl: string; phone: string | null; instagram: string | null; email: string | null; latitude?: number; longitude?: number; openingHours?: OpeningHours };
 
 function Arrow({ diagonal = false }: { diagonal?: boolean }) {
   return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d={diagonal ? 'M6 18 18 6M6 6h12v12' : 'M4 12h16m-6-6 6 6-6 6'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
@@ -24,10 +26,11 @@ export default function BakerySite({ products, bakery, demo = false }: { product
   const [page, setPage] = useState(1);
   const [category, setCategory] = useState('all');
   const [query, setQuery] = useState('');
+  const [availableOnly, setAvailableOnly] = useState(false);
   const [selected, setSelected] = useState<Product | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const matches = createCatalogSearch(query);
-  const visible = products.filter((product) => (category === 'all' || catalogGroup(product) === category) && matches(`${product.name} ${product.description}`))
+  const visible = products.filter((product) => (!availableOnly || product.available !== false) && (category === 'all' || catalogGroup(product) === category) && matches(`${product.name} ${product.description}`))
     .sort((first, second) => Number(first.available === false) - Number(second.available === false));
   const pageCount = Math.max(1, Math.ceil(visible.length / 18));
   const currentPage = Math.min(page, pageCount);
@@ -73,11 +76,12 @@ export default function BakerySite({ products, bakery, demo = false }: { product
           {bakery.instagram && <a href={bakery.instagram} target="_blank" rel="noopener noreferrer" aria-label="Instagram пекарні" title="Instagram"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ verticalAlign: 'middle' }}><rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" strokeWidth="1.8" /><circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.8" /><circle cx="17.5" cy="6.5" r="1.1" fill="currentColor" /></svg></a>}
           <a href="https://t.me/Khlibne_remeslo_kh_bot" target="_blank" rel="noopener noreferrer" aria-label="Telegram: @Khlibne_remeslo_kh_bot"><svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ verticalAlign: 'middle', marginRight: 8 }}><path d="M21.7 3.3a1 1 0 0 0-1.1-.2L2.9 10c-1 .4-1 1.1-.2 1.4l4.6 1.4 1.8 5.5c.2.6.5.8.9.8.3 0 .6-.2.9-.5l2.6-2.5 4.7 3.5c.9.5 1.5.2 1.7-.8l2.7-13.8c.2-.8 0-1.4-.9-1.7ZM8.1 12.5l10.5-6.6c.5-.3.9-.1.5.2l-8.7 7.8-.3 3.6-2-5Z" /></svg></a>
         </div> : <p>Телефон та посилання на соцмережі додамо згодом.<br />А поки — чекаємо на знайомство в пекарні.</p>}
-      </div><a href={bakery.mapsUrl} target="_blank" rel="noopener noreferrer" aria-label="Відкрити адресу пекарні в Google Maps"><Arrow diagonal /></a></section>
+      <OpeningSchedule hours={bakery.openingHours} /></div><a href={bakery.mapsUrl} target="_blank" rel="noopener noreferrer" aria-label="Відкрити адресу пекарні в Google Maps"><Arrow diagonal /></a></section>
       <section id="catalog" className={styles.catalog} aria-labelledby="catalog-title">
         <div className={styles.sectionTop}><div><h2 id="catalog-title">Наша вітрина</h2></div><p className={styles.sectionIntro}>Хліб для щодня, круасан для настрою.<br />Знайдіть свій маленький привід для радості.</p></div>
         <div className={styles.catalogTools}>
           <div className={styles.tabs} role="group" aria-label="Категорії випічки">{categories.map((item) => <button key={item.id} aria-pressed={category === item.id} className={category === item.id ? styles.activeTab : ''} onClick={() => { setCategory(item.id); setPage(1); }}>{item.name}<span title="Товарів у наявності">{products.filter((product) => product.available !== false && (item.id === 'all' || catalogGroup(product) === item.id)).length}</span></button>)}</div>
+          <label className={styles.availabilityFilter}><input type="checkbox" checked={availableOnly} onChange={event => { setAvailableOnly(event.target.checked); setPage(1); }} />Тільки в наявності</label>
           <label className={styles.search}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" strokeWidth="1.5"/><path d="m16 16 5 5" stroke="currentColor" strokeWidth="1.5"/></svg><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} type="search" aria-label="Пошук випічки" placeholder="Знайти щось смачне" /></label>
         </div>
         <p className={styles.demoNote}>{demo ? 'Знайомство з майбутнім каталогом: фото й позиції наведені для прикладу.' : 'Асортимент і ціни з нашої вітрини. Наявність уточнюйте в пекарні.'}</p>
@@ -89,7 +93,7 @@ export default function BakerySite({ products, bakery, demo = false }: { product
           <p className={styles.productDescription}>{product.description}</p>
         </article>)}</div>
         {pageCount > 1 && <nav className={styles.pagination} aria-label="Сторінки каталогу"><button disabled={currentPage === 1} onClick={() => changePage(currentPage - 1)}>← Назад</button>{Array.from({ length: pageCount }, (_, index) => index + 1).map((number) => <button key={number} aria-label={`Сторінка ${number}`} aria-current={currentPage === number ? 'page' : undefined} onClick={() => changePage(number)}>{number}</button>)}<button disabled={currentPage === pageCount} onClick={() => changePage(currentPage + 1)}>Далі →</button></nav>}
-        {visible.length === 0 && <div className={styles.empty}><h3>Цього смаку поки немає у вітрині</h3><p>Спробуйте іншу назву або категорію.</p><button onClick={() => { setQuery(''); setCategory('all'); }}>Показати всю випічку <Arrow /></button></div>}
+        {visible.length === 0 && <div className={styles.empty}><h3>Цього смаку поки немає у вітрині</h3><p>Спробуйте іншу назву або категорію.</p><button onClick={() => { setQuery(''); setCategory('all'); setAvailableOnly(false); setPage(1); }}>Показати всю випічку <Arrow /></button></div>}
         <div className={styles.catalogBottom}><span>Смак краще знайомиться наживо.</span><a href="#location">Завітайте до пекарні <Arrow diagonal /></a></div>
       </section>
       <section id="about" className={styles.about} aria-labelledby="about-title">

@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { DatabaseService } from './database.service.js';
 import type { Content, Product } from './content.service.js';
 
@@ -29,7 +29,26 @@ export function posterAvailability(products: Product[], menu: MenuItem[], stocks
 
 @Injectable()
 export class PosterService {
+  private readonly logger = new Logger(PosterService.name);
   constructor(private readonly db: DatabaseService) {}
+  async notifyFailure() {
+    const token = process.env.TELEGRAM_ADMIN_BOT_TOKEN?.trim();
+    const admins = [...new Set((process.env.TELEGRAM_ADMIN_IDS ?? '').split(',').map(id => id.trim()).filter(id => /^\d+$/.test(id)))];
+    if (!token || !admins.length) { this.logger.warn('Poster failure alert: admin bot is not configured'); return; }
+    await Promise.allSettled(admins.map(async admin => {
+      // Persistent per-recipient claim prevents duplicate alerts across serverless instances.
+      const claim = await this.db.query<{ last_sent_at: Date }>(`INSERT INTO bakery_poster_alerts (admin_id,last_sent_at) VALUES ($1,now()) ON CONFLICT (admin_id) DO UPDATE SET last_sent_at=now() WHERE bakery_poster_alerts.last_sent_at < now()-interval '6 hours' RETURNING last_sent_at`, [admin]);
+      if (!claim.rows?.length) return;
+      try {
+        const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: admin, text: '⚠️ Не вдалося оновити наявність із Poster. На сайті збережено попередні дані. Перевірте синхронізацію в адмін-панелі. Повторне сповіщення — не частіше разу на 6 годин.', link_preview_options: { is_disabled: true } }), signal: AbortSignal.timeout(10000) });
+        const result = await response.json() as { ok?: boolean };
+        if (!response.ok || !result.ok) throw new Error('Alert delivery failed');
+      } catch {
+        await this.db.query('DELETE FROM bakery_poster_alerts WHERE admin_id=$1 AND last_sent_at=$2', [admin, claim.rows[0].last_sent_at]);
+        this.logger.warn('Could not deliver Poster failure alert');
+      }
+    }));
+  }
   async status() {
     const row = (await this.db.query('SELECT last_attempt_at AS "lastAttemptAt",last_success_at AS "lastSuccessAt",last_error AS "lastError",summary FROM bakery_poster_sync WHERE id=1')).rows[0];
     return { configured: !!process.env.POSTER_API_TOKEN?.trim(), storage: process.env.POSTER_STORAGE_ID?.trim() || null, ...row };
@@ -49,8 +68,8 @@ export class PosterService {
     return payload.response;
   }
   async sync() {
-    if (!process.env.POSTER_API_TOKEN?.trim()) throw new ServiceUnavailableException('API-ключ Poster не налаштований.');
     try {
+      if (!process.env.POSTER_API_TOKEN?.trim()) throw new Error('Poster not configured');
       return await this.db.transaction(async client => {
         const lock = await client.query<{ locked: boolean }>("SELECT pg_try_advisory_xact_lock(hashtext('bakery-poster-sync')) AS locked");
         if (!lock.rows[0].locked) throw new ConflictException('Синхронізація вже триває.');
@@ -63,12 +82,14 @@ export class PosterService {
         if (!planned.summary.matched) throw new Error('No matching balances');
         if (planned.summary.changed) await client.query('UPDATE bakery_site_content SET content=$1::jsonb,updated_at=now() WHERE id=1', [JSON.stringify({ ...content, products: planned.products })]);
         await client.query('UPDATE bakery_poster_sync SET last_attempt_at=now(),last_success_at=now(),last_error=NULL,summary=$1::jsonb WHERE id=1', [JSON.stringify(planned.summary)]);
+        await client.query('DELETE FROM bakery_poster_alerts');
         return planned.summary;
       });
     } catch (error) {
       if (error instanceof ConflictException) throw error;
       // Do not persist remote error bodies or token-bearing request URLs.
       await this.db.query("UPDATE bakery_poster_sync SET last_attempt_at=now(),last_error='Не вдалося прочитати залишки Poster. Попередню наявність збережено.' WHERE id=1").catch(() => {});
+      await this.notifyFailure().catch(() => this.logger.warn('Poster failure alert unavailable'));
       throw new ServiceUnavailableException('Не вдалося прочитати залишки Poster. Попередню наявність збережено.');
     }
   }

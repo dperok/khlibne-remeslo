@@ -6,3 +6,4 @@
 :global(html[data-theme="dark"]) .error,:global(html[data-theme="dark"]) .danger{color:#ffb19a}:global(html[data-theme="dark"]) .success{color:#c5db94}
 .headerActions{display:flex;align-items:center;gap:22px;margin-left:auto}
 .productSearch{margin-top:24px}
+.scheduleRow{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin:12px 0}.scheduleRow>label:first-child{min-width:150px;display:flex;align-items:center;gap:8px}.scheduleRow input[type=checkbox]{width:18px;min-height:18px}.scheduleRow input[type=time]{max-width:140px}.contactPanel fieldset{grid-column:1/-1;border:1px solid var(--line);padding:16px;margin-bottom:18px}

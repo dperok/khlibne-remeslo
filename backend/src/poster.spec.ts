@@ -54,3 +54,24 @@ describe('Poster stock sync', () => {
     expect(sync).not.toHaveBeenCalled(); controller.sync('Bearer cron-key'); expect(sync).toHaveBeenCalledOnce();
   });
 });
+
+describe('Poster failure notifications', () => {
+  it('notifies each administrator once and does not send secrets', async () => {
+    vi.stubEnv('TELEGRAM_ADMIN_BOT_TOKEN', 'test-admin-token'); vi.stubEnv('TELEGRAM_ADMIN_IDS', '470334534,5711475783,470334534');
+    const claimed = new Set();
+    const db = { query: vi.fn(async (_sql, [id]) => { if (claimed.has(id)) return { rows: [] }; claimed.add(id); return { rows: [{ last_sent_at: new Date() }] }; }) } as unknown as DatabaseService;
+    const fetcher = vi.fn(async () => new Response(JSON.stringify({ ok: true }))); vi.stubGlobal('fetch', fetcher);
+    const service = new PosterService(db); await service.notifyFailure(); await service.notifyFailure();
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(fetcher.mock.calls.map(call => JSON.parse((call as unknown as [string, RequestInit])[1].body as string).chat_id).sort()).toEqual(['470334534', '5711475783']);
+    for (const call of fetcher.mock.calls) expect((call as unknown as [string, RequestInit])[1].body).not.toContain('test-admin-token');
+  });
+  it('releases a failed delivery claim so the next run can retry', async () => {
+    vi.stubEnv('TELEGRAM_ADMIN_BOT_TOKEN', 'test'); vi.stubEnv('TELEGRAM_ADMIN_IDS', '470334534');
+    const query = vi.fn(async () => ({ rows: [{ last_sent_at: new Date() }] }));
+    const db = { query } as unknown as DatabaseService;
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('network'); }));
+    await expect(new PosterService(db).notifyFailure()).resolves.toBeUndefined();
+    expect(query.mock.calls.some(call => String(call[0]).startsWith('DELETE'))).toBe(true);
+  });
+});
