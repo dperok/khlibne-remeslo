@@ -1,3 +1,4 @@
+import { backendUrl } from '../../../backend-url';
 type Context = { params: Promise<{ path: string[] }> };
 
 async function proxy(request: Request, context: Context) {
@@ -12,7 +13,7 @@ async function proxy(request: Request, context: Context) {
   const body = ['GET', 'HEAD'].includes(request.method) ? undefined : await request.text();
   if (body && body.length > 30000) return Response.json({ message: 'Завеликий запит' }, { status: 413 });
   try {
-    const response = await fetch(new URL(`/admin/${route}`, process.env.BACKEND_URL ?? 'http://127.0.0.1:3001'), {
+    const response = await fetch(backendUrl(`/admin/${route}`), {
       method: request.method, body, cache: 'no-store', signal: AbortSignal.timeout(15000),
       headers: { 'Content-Type': 'application/json', Cookie: request.headers.get('cookie') ?? '', Origin: request.headers.get('origin') ?? '' },
     });

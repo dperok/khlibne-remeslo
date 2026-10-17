@@ -1,6 +1,8 @@
+import { backendUrl } from '../../backend-url';
+
 export async function GET(request: Request) {
   const probe = new URL(request.url).searchParams.get("probe") ?? crypto.randomUUID();
-  const url = new URL("/database/status", process.env.BACKEND_URL ?? "http://127.0.0.1:3001");
+  const url = backendUrl('/database/status');
   url.searchParams.set("probe", probe);
   try {
     const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(15000) });

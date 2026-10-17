@@ -5,6 +5,14 @@ const interactions = { message: async () => false, callback: async () => {}, ret
 
 describe('Telegram polling transport', () => {
   afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
+  it('never starts background polling on Vercel', async () => {
+    vi.stubEnv('VERCEL', '1'); vi.stubEnv('TELEGRAM_USER_BOT_TOKEN', 'test-token'); vi.stubEnv('TELEGRAM_ADMIN_BOT_TOKEN', '');
+    const fetchMock = vi.fn(); vi.stubGlobal('fetch', fetchMock);
+    const service = new TelegramService({} as BotCommandsService, interactions);
+    service.onModuleInit();
+    expect(service.status().user).toBe('webhook'); expect(fetchMock).not.toHaveBeenCalled();
+    await service.onApplicationShutdown();
+  });
   it('does not contact Telegram with blank tokens', async () => {
     vi.stubEnv('TELEGRAM_USER_BOT_TOKEN', ''); vi.stubEnv('TELEGRAM_ADMIN_BOT_TOKEN', '');
     const fetchMock = vi.fn(); vi.stubGlobal('fetch', fetchMock);

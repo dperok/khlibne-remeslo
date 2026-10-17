@@ -1,12 +1,12 @@
 import { Suspense } from 'react';
 import BakerySite, { type Bakery, type Product } from './bakery-site';
+import { backendUrl } from './backend-url';
 
 async function loadBakeryData() {
-  const base = process.env.BACKEND_URL ?? 'http://127.0.0.1:3001';
   try {
     const responses = await Promise.all([
-      fetch(new URL('/catalog', base), { cache: 'no-store', signal: AbortSignal.timeout(8000) }),
-      fetch(new URL('/bakery', base), { cache: 'no-store', signal: AbortSignal.timeout(8000) }),
+      fetch(backendUrl('/catalog'), { cache: 'no-store', signal: AbortSignal.timeout(8000) }),
+      fetch(backendUrl('/bakery'), { cache: 'no-store', signal: AbortSignal.timeout(8000) }),
     ]);
     if (responses.some((response) => !response.ok)) throw new Error('Backend unavailable');
     const [catalog, bakery]: [{ products: Product[]; demo: boolean }, Bakery] = await Promise.all([responses[0].json(), responses[1].json()]);

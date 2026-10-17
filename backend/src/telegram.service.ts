@@ -4,7 +4,7 @@ import type { BotMessage, BotRole } from './bot-commands.service.js';
 import { BotInteractionsService } from './bot-interactions.service.js';
 import type { BotCallback } from './bot-interactions.service.js';
 
-type Update = { update_id: number; message?: BotMessage; callback_query?: BotCallback };
+export type Update = { update_id: number; message?: BotMessage; callback_query?: BotCallback };
 @Injectable()
 export class TelegramService implements OnModuleInit, OnApplicationShutdown {
   private readonly logger = new Logger(TelegramService.name);
@@ -19,7 +19,8 @@ export class TelegramService implements OnModuleInit, OnApplicationShutdown {
     if (tokens.user && tokens.admin && tokens.user === tokens.admin) { this.states.user = this.states.admin = 'duplicate_tokens'; this.logger.error('Use different tokens for the two bots'); return; }
     for (const role of ['user', 'admin'] as const) {
       const token = tokens[role];
-      if (token) { this.states[role] = 'starting'; this.tasks.push(this.run(role, token)); }
+      if (token && (process.env.VERCEL || process.env.TELEGRAM_MODE === 'webhook')) this.states[role] = 'webhook';
+      else if (token) { this.states[role] = 'starting'; this.tasks.push(this.run(role, token)); }
       else this.logger.log(`${role} bot disabled: token not configured`);
     }
   }
@@ -33,6 +34,26 @@ export class TelegramService implements OnModuleInit, OnApplicationShutdown {
     if (!data.ok) { const error = new Error('Telegram API failed') as Error & { code: number }; error.code = data.error_code ?? response.status; throw error; }
     return data.result;
   }
+  async handleUpdate(role: BotRole, update: Update) {
+    const token = process.env[role === 'user' ? 'TELEGRAM_USER_BOT_TOKEN' : 'TELEGRAM_ADMIN_BOT_TOKEN']?.trim();
+    if (!token || this.states[role] === 'duplicate_tokens') throw new Error('Bot not configured');
+    if (update.callback_query) {
+      if (role === 'admin') await this.interactions.callback(update.callback_query, this.call.bind(this));
+      else await this.interactions.catalogCallback(update.callback_query, this.call.bind(this));
+    }
+    if (update.message) {
+      const handled = await this.interactions.message(role, update.message, this.call.bind(this));
+      const text = handled ? null : await this.commands.handle(role, update.message);
+      if (text !== null) {
+        try {
+          await this.call(token, 'sendMessage', { chat_id: update.message.chat.id, text, link_preview_options: { is_disabled: true },
+            ...(role === 'user' && update.message.chat.type === 'private' ? { reply_markup: { keyboard: [['☎️ Контакти', '🌾 Сайт'], ['💬 Зв’язатися']], resize_keyboard: true } } : {}) });
+        } catch (error) { if ((error as { code?: number }).code !== 403) throw error; }
+      }
+    }
+    await this.retryDeliveries();
+  }
+  async retryDeliveries() { await this.interactions.retryDeliveries(this.call.bind(this)); }
   private delay(ms: number) {
     return new Promise<void>((resolve) => {
       const finish = () => { clearTimeout(timer); this.abort.signal.removeEventListener('abort', finish); resolve(); };

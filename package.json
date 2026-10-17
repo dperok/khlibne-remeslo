@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "telegram:webhooks": "node backend/scripts/configure-telegram.mjs",
+    "verify:serverless": "node backend/scripts/verify-serverless.mjs",
     "dev:frontend": "npm --prefix frontend run dev",
     "dev:backend": "npm --prefix backend run start:dev",
     "build": "npm --prefix frontend run build && npm --prefix backend run build",

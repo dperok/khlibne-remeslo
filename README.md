@@ -1,5 +1,7 @@
 # Site
 
+Vercel deployment: see [DEPLOYMENT.md](DEPLOYMENT.md). Both bots support authenticated webhooks; local polling remains available.
+
 ## Хлібне ремесло
 
 ### Admin panel and Telegram bots
@@ -23,30 +25,32 @@ Bot profiles shown in the admin panel:
 
 The administrative bot silently ignores unauthorized senders and group messages.
 
-Visitor `/address` now sends a native Telegram venue card (not a location permission
-request). Its latitude and longitude are editable alongside contacts in the admin panel.
-The default pin was read from the bakery's Google Maps place: 50.0025971, 36.2705935.
+Visitor catalogue and address are available on the website. Retired bot commands link
+to the corresponding website section. The bot keeps contacts and support.
 
-Visitor `/support` or **💬 Зв’язатися** enters a 30-minute text correspondence mode;
-`/cancel` ends it. Each message in that mode is saved in Neon and delivered through the
+Visitor `/support` or **💬 Зв’язатися** waits up to 30 minutes for one text message;
+`/cancel` cancels it, and successful submission automatically exits support mode.
+The message is saved in Neon and delivered through the
 admin bot to every ID in `TELEGRAM_ADMIN_IDS`, with a **Відповісти** inline button.
 An authorized administrator presses that button and replies to the bot's ForceReply
 prompt. The reply returns to the visitor through the visitor bot. Reply prompts are
 scoped to the administrator and expire after 24 hours; `/cancel` invalidates that admin's
 outstanding prompts. Each administrator must first press **Start** in the admin bot:
 Telegram cannot initiate a chat with somebody who has never started it or has blocked it.
-Pending deliveries remain in Neon and are retried by the admin polling loop and on `/start`.
+Pending deliveries remain in Neon and are retried by local polling, webhook traffic,
+and the protected Vercel cron. Successful replies close the admin's reply mode and
+mark the original message as answered for both administrators.
 Correspondence and routing survive application restarts. Text messages are supported;
 attachments receive a request to describe the issue in text. No messages outside explicit
 support mode are relayed. Apply `003_telegram_support.sql` using `npm run db:migrate`.
 
-Open `/admin` or use the footer's **Для команди** link. The requested temporary password
+Open `/admin`. The requested temporary password
 is configured only in the gitignored root `.env` as `ADMIN_PASSWORD`. Change it before
-publishing, then restart the backend (existing sessions are invalidated on restart).
+publishing, then restart the backend (changing the password invalidates existing sessions).
 The panel also keeps a visible reminder while the temporary password is in use.
 Login uses an 8-hour HttpOnly/SameSite=Strict session cookie, origin checks for writes,
-and a 5-failed-attempt / 15-minute login limit. Run one backend instance for the current
-in-memory session and rate-limit store.
+and a 5-failed-attempt / 15-minute login limit. Sessions and failed attempts are stored
+in Neon and shared across backend instances. Apply `005_serverless_runtime.sql`.
 
 The panel can add, edit, hide/show and delete products, and change contacts and address.
 Changes are saved in the existing Neon database (`bakery_site_content`), shared with
@@ -71,14 +75,16 @@ Restart `npm start` after changing configuration. Empty tokens disable the corre
 bot without preventing the website from starting. Do not publish tokens in client-side
 variables. No new Telegram accounts were registered by this implementation.
 
-- Visitor bot: `/start`, `/help`, `/catalog`, `/address`, `/contacts`, `/site`, plus a keyboard.
+- Visitor bot: `/start`, `/help`, `/contacts`, `/support`, `/cancel`, `/site`, plus a keyboard.
 - Admin bot: `/status`, `/products`, `/hide ID`, `/show ID`, `/contact phone|email|instagram value`,
   `/panel`. A contact value of `-` clears the field. Administrative access requires both
   an allowed sender ID and a private chat; knowing a chat ID alone grants no access.
-- The bots use Telegram `getUpdates` long polling while the NestJS server is running.
+- Locally the bots use Telegram `getUpdates` long polling while the NestJS server is running.
   Run exactly one instance per token. Existing webhooks are preserved; if one exists,
   polling is paused and the admin panel reports it. Invalid tokens and polling conflicts
   are reported without exposing tokens in logs.
+- On Vercel both bots use authenticated webhooks; there is no polling loop. Setup and
+  registration commands are in [DEPLOYMENT.md](DEPLOYMENT.md).
 - For public hosting set `PUBLIC_SITE_URL` to the real HTTPS origin with no trailing slash;
   this also enables Secure session cookies. The local URL is only for local testing.
 

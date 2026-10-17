@@ -10,7 +10,7 @@ import { createCatalogSearch } from '../../../../backend/src/catalog-search';
 type EditableProduct = Product & { visible?: boolean };
 type Content = { products: EditableProduct[]; bakery: Bakery; bots: { user: string; admin: string }; temporaryPassword: boolean };
 const blank: EditableProduct = { id: '', name: '', category: 'bread', categoryLabel: 'Хліб', image: '/images/bread-hero.jpg', description: '', ingredients: '', allergens: '', tag: '', visible: true, available: true };
-const botStates: Record<string, string> = { disabled: 'Токен не додано', starting: 'Запускається', running: 'Працює', retrying: 'Повторне з’єднання', stopped: 'Зупинений', invalid_token: 'Невірний токен', polling_conflict: 'Вже запущений в іншому процесі', webhook_configured: 'Встановлено webhook', duplicate_tokens: 'Для ботів потрібні різні токени' };
+const botStates: Record<string, string> = { webhook: 'Webhook увімкнено', disabled: 'Токен не додано', starting: 'Запускається', running: 'Працює', retrying: 'Повторне з’єднання', stopped: 'Зупинений', invalid_token: 'Невірний токен', polling_conflict: 'Вже запущений в іншому процесі', webhook_configured: 'Встановлено webhook', duplicate_tokens: 'Для ботів потрібні різні токени' };
 type Day = { day: string; visitors: number; sessions: number; averageActiveMs: number };
 type Analytics = { timezone: string; today: Day; days: Day[] };
 

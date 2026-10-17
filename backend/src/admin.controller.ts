@@ -11,7 +11,7 @@ export class AdminController {
 
   @Get('analytics')
   @Header('Cache-Control', 'no-store')
-  analyticsSummary(@Req() req: Request) { this.auth.requireSession(req); return this.analytics.summary(); }
+  async analyticsSummary(@Req() req: Request) { await this.auth.requireSession(req); return this.analytics.summary(); }
 
   @Post('login')
   login(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Body() body: { password?: unknown }) { return this.auth.login(req, res, body); }
@@ -21,26 +21,26 @@ export class AdminController {
 
   @Get('session')
   @Header('Cache-Control', 'no-store')
-  session(@Req() req: Request) { this.auth.requireSession(req); return { authenticated: true, temporaryPassword: this.auth.temporaryPassword }; }
+  async session(@Req() req: Request) { await this.auth.requireSession(req); return { authenticated: true, temporaryPassword: this.auth.temporaryPassword }; }
 
   @Get('content')
   @Header('Cache-Control', 'no-store')
   async getContent(@Req() req: Request) {
-    this.auth.requireSession(req);
+    await this.auth.requireSession(req);
     return { ...await this.content.get(), bots: this.telegram.status(), temporaryPassword: this.auth.temporaryPassword };
   }
 
-  private authorize(req: Request) { this.auth.requireSession(req); this.auth.checkOrigin(req); }
+  private async authorize(req: Request) { await this.auth.requireSession(req); this.auth.checkOrigin(req); }
 
   @Post('products')
-  create(@Req() req: Request, @Body() body: Record<string, unknown>) { this.authorize(req); return this.content.saveProduct(undefined, body); }
+  async create(@Req() req: Request, @Body() body: Record<string, unknown>) { await this.authorize(req); return this.content.saveProduct(undefined, body); }
 
   @Put('products/:id')
-  update(@Req() req: Request, @Param('id') id: string, @Body() body: Record<string, unknown>) { this.authorize(req); return this.content.saveProduct(id, body); }
+  async update(@Req() req: Request, @Param('id') id: string, @Body() body: Record<string, unknown>) { await this.authorize(req); return this.content.saveProduct(id, body); }
 
   @Delete('products/:id')
-  remove(@Req() req: Request, @Param('id') id: string) { this.authorize(req); return this.content.removeProduct(id); }
+  async remove(@Req() req: Request, @Param('id') id: string) { await this.authorize(req); return this.content.removeProduct(id); }
 
   @Put('bakery')
-  saveBakery(@Req() req: Request, @Body() body: Record<string, unknown>) { this.authorize(req); return this.content.saveBakery(body); }
+  async saveBakery(@Req() req: Request, @Body() body: Record<string, unknown>) { await this.authorize(req); return this.content.saveBakery(body); }
 }

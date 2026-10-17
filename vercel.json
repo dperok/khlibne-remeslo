@@ -1,0 +1,24 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "frontend": {
+      "root": "frontend",
+      "framework": "nextjs",
+      "installCommand": "npm ci && npm ci --prefix ../backend",
+      "bindings": [{ "type": "service", "service": "backend", "format": "url", "env": "BACKEND_URL" }]
+    },
+    "backend": {
+      "root": "backend",
+      "framework": "nestjs",
+      "entrypoint": "src/main.ts",
+      "installCommand": "npm ci",
+      "buildCommand": "npm run build",
+      "functions": { "src/main.ts": { "maxDuration": 60 } }
+    }
+  },
+  "rewrites": [
+    { "source": "/telegram/:path*", "destination": { "service": "backend" } },
+    { "source": "/(.*)", "destination": { "service": "frontend" } }
+  ],
+  "crons": [{ "path": "/telegram/retry", "schedule": "0 7 * * *" }]
+}

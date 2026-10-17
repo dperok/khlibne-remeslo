@@ -1,5 +1,7 @@
+import { backendUrl } from '../../backend-url';
+
 export async function GET(request: Request) {
-  const url = new URL('/catalog', process.env.BACKEND_URL ?? 'http://127.0.0.1:3001');
+  const url = backendUrl('/catalog');
   const search = new URL(request.url).searchParams;
   for (const key of ['category', 'q']) {
     const value = search.get(key);
