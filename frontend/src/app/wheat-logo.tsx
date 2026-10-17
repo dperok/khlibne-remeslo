@@ -1,10 +1,9 @@
 export default function WheatLogo({ className, size = 42 }: { className?: string; size?: number }) {
-  return <svg className={className} width={size} height={size} viewBox="0 0 100 100" fill="none" aria-hidden="true">
+  return <svg className={className} width={size} height={size} viewBox="18 5 64 92" fill="none" aria-hidden="true">
     <g stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="50" cy="50" r="45" />
       <path d="M50 95v-4q0-4-3-4C32 85 26 75 24 61c-1-8 21-8 25 6q1 5 2 0c4-14 26-14 25-6-2 14-8 24-23 26q-3 0-3 4" />
       <path d="m29 57-5-13c-3-10 21-10 25 7q1 4 2 0c4-17 28-17 25-7l-5 13" />
-      <path d="m29 40-5-13c-3-10 21-10 25 7q1 4 2 0c4-17 28-17 25-7l-5 13M38 23c0-11 24-11 24 0M50 5v10M24 13v14M76 13v14" />
+      <path d="m29 40-5-13c-3-10 21-10 25 7q1 4 2 0c4-17 28-17 25-7l-5 13M38 23c0-11 24-11 24 0" />
     </g>
   </svg>;
 }
