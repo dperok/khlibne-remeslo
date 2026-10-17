@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import { connection } from 'next/server';
 import BakerySite, { type Bakery, type Product } from './bakery-site';
 import { backendUrl } from './backend-url';
 
@@ -17,6 +18,7 @@ async function loadBakeryData() {
 }
 
 async function BakeryContent() {
+  await connection();
   const data = await loadBakeryData();
   if (!data) return <main className="unavailable"><span>Хлібне ремесло</span><h1>Наша вітрина скоро повернеться.</h1><p>Не вдалося завантажити каталог. Оновіть сторінку трохи пізніше.</p></main>;
   return <BakerySite products={data.products} bakery={data.bakery} demo={data.demo} />;

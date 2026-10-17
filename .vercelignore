@@ -1,0 +1,13 @@
+.tools/
+node_modules/
+**/node_modules/
+.next/
+**/.next/
+**/dist/
+.env*
+**/.env*
+.git/
+.neon/
+artifacts/
+*.log
+*.tsbuildinfo

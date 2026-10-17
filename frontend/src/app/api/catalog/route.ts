@@ -1,6 +1,8 @@
 import { backendUrl } from '../../backend-url';
+import { connection } from 'next/server';
 
 export async function GET(request: Request) {
+  await connection();
   const url = backendUrl('/catalog');
   const search = new URL(request.url).searchParams;
   for (const key of ['category', 'q']) {

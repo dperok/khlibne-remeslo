@@ -1,6 +1,8 @@
 import { backendUrl } from '../../backend-url';
+import { connection } from 'next/server';
 
 export async function GET(request: Request) {
+  await connection();
   const probe = new URL(request.url).searchParams.get("probe") ?? crypto.randomUUID();
   const url = backendUrl('/database/status');
   url.searchParams.set("probe", probe);
