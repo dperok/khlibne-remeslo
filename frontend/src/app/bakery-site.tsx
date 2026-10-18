@@ -1,6 +1,8 @@
 'use client';
 
 import Image from 'next/image';
+import Cart, { useCart } from './cart';
+import cartStyles from './cart.module.css';
 
 import VisitTracker from './visit-tracker';
 import { useRef, useState } from 'react';
@@ -23,6 +25,9 @@ function Pin() {
 }
 
 export default function BakerySite({ products, bakery, demo = false }: { products: Product[]; bakery: Bakery; demo?: boolean }) {
+  const cart = useCart();
+  const [cartOpen, setCartOpen] = useState(false);
+  const [added, setAdded] = useState('');
   const [page, setPage] = useState(1);
   const [category, setCategory] = useState('all');
   const [query, setQuery] = useState('');
@@ -38,15 +43,17 @@ export default function BakerySite({ products, bakery, demo = false }: { product
     setPage(next);
     document.getElementById('catalog')?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
   }
-  function openProduct(product: Product) { setSelected(product); dialog.current?.showModal(); }
+  function openProduct(product: Product) { setAdded(''); setSelected(product); dialog.current?.showModal(); }
 
   return <>
     <VisitTracker />
+    <Cart cart={cart} products={products} bakery={bakery} open={cartOpen} onClose={() => setCartOpen(false)} />
     <a href="#catalog" className="skip-link">Перейти до каталогу</a>
     <div className={styles.topline}><a href="https://t.me/Khlibne_remeslo_kh_bot" target="_blank" rel="noopener noreferrer"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.7 3.3a1 1 0 0 0-1.1-.2L2.9 10c-1 .4-1 1.1-.2 1.4l4.6 1.4 1.8 5.5c.2.6.5.8.9.8.3 0 .6-.2.9-.5l2.6-2.5 4.7 3.5c.9.5 1.5.2 1.7-.8l2.7-13.8c.2-.8 0-1.4-.9-1.7ZM8.1 12.5l10.5-6.6c.5-.3.9-.1.5.2l-8.7 7.8-.3 3.6-2-5Z" /></svg>Telegram</a><a href={bakery.mapsUrl} target="_blank" rel="noopener noreferrer"><Pin />{bakery.city}, {bakery.address}</a><ThemeToggle /></div>
     <header className={styles.header}>
       <a href="#home" className={styles.brand} aria-label="Хлібне ремесло — на початок"><Wheat /><span>Хлібне ремесло<small>ПЕКАРНЯ З ХАРАКТЕРОМ</small></span></a>
       <nav aria-label="Головна навігація"><a href="#catalog">Наша випічка</a><a href="#about">Про пекарню</a><a href="#contacts">Контакти</a></nav>
+      <button className={cartStyles.trigger} onClick={() => setCartOpen(true)} aria-label={`Кошик: ${cart.count} товарів`}><svg width="23" height="23" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 3h2l3 12h11l3-9H6M9 20h.01M18 20h.01" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg><span>{cart.count}</span></button>
       <a href={bakery.mapsUrl} className={styles.headerLocation} target="_blank" rel="noopener noreferrer"><Pin /><span>Де ми знаходимося</span><Arrow diagonal /></a>
     </header>
     <main id="home">
@@ -108,7 +115,7 @@ export default function BakerySite({ products, bakery, demo = false }: { product
     </main>
     <footer className={styles.footer}><a href="#home" className={styles.brand}><Wheat /><span>Хлібне ремесло<small>ПЕКАРНЯ З ХАРАКТЕРОМ</small></span></a><span>Харків · {bakery.address}</span><span>© 2026 Хлібне ремесло</span><a href="#home">Нагору ↑</a></footer>
     <dialog ref={dialog} className={styles.dialog} onClose={() => setSelected(null)} onClick={(event) => { if (event.target === event.currentTarget) dialog.current?.close(); }} aria-labelledby="product-dialog-title">
-      {selected && <><button className={styles.closeDialog} onClick={() => dialog.current?.close()} aria-label="Закрити опис">×</button><div className={styles.dialogImage}><Image unoptimized={selected.image.startsWith('https://')} src={selected.image} alt={selected.name} fill sizes="(max-width: 700px) 90vw, 420px" /></div><div className={styles.dialogCopy}><p className={styles.eyebrow}>{selected.categoryLabel}</p><h2 id="product-dialog-title">{selected.name}</h2>{selected.available === false && <p className={styles.stockStatus}>Немає в наявності</p>}<p>{selected.description}</p><p className={styles.dialogPrice}>{selected.price != null ? `${selected.price.toLocaleString('uk-UA')} ₴` : ''}</p>{selected.ingredients && <><h3>Склад</h3><p>{selected.ingredients}</p></>}{selected.allergens && <><h3>Можливі алергени</h3><p>{selected.allergens}</p></>}{demo && <p className={styles.dialogNote}>Демонстраційна позиція.</p>}<a href={bakery.mapsUrl} className={styles.primary} target="_blank" rel="noopener noreferrer">Завітати до пекарні <Arrow diagonal /></a></div></>}
+      {selected && <><button className={styles.closeDialog} onClick={() => dialog.current?.close()} aria-label="Закрити опис">×</button><div className={styles.dialogImage}><Image unoptimized={selected.image.startsWith('https://')} src={selected.image} alt={selected.name} fill sizes="(max-width: 700px) 90vw, 420px" /></div><div className={styles.dialogCopy}><p className={styles.eyebrow}>{selected.categoryLabel}</p><h2 id="product-dialog-title">{selected.name}</h2>{selected.available === false && <p className={styles.stockStatus}>Немає в наявності</p>}<p>{selected.description}</p><p className={styles.dialogPrice}>{selected.price != null ? `${selected.price.toLocaleString('uk-UA')} ₴` : ''}</p>{selected.ingredients && <><h3>Склад</h3><p>{selected.ingredients}</p></>}{selected.allergens && <><h3>Можливі алергени</h3><p>{selected.allergens}</p></>}{demo && <p className={styles.dialogNote}>Демонстраційна позиція.</p>}<button className={cartStyles.add} disabled={!cart.ready || !!cart.pending || demo || selected.available === false || selected.price == null || (cart.lines.find(line => line.id === selected.id)?.quantity ?? 0) >= 99 || (cart.lines.length >= 50 && !cart.lines.some(line => line.id === selected.id))} onClick={() => { cart.quantity(selected.id, (cart.lines.find(line => line.id === selected.id)?.quantity ?? 0) + 1); setAdded('Додано до кошика'); }}>Додати до кошика <span aria-hidden="true">+</span></button><p role="status">{added}</p><button className={cartStyles.add} onClick={() => { dialog.current?.close(); setCartOpen(true); }}>Відкрити кошик</button></div></>}
     </dialog>
   </>;
 }

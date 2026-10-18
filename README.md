@@ -156,3 +156,16 @@ For separate hosting, set server-side `BACKEND_URL` for Next.js to the NestJS ba
 Supply `DATABASE_URL` securely to the backend host. Neon deploy provisions backend
 services; it does not publish these application servers or the Next.js frontend.
 
+### Pickup orders
+
+The cart and recent order receipts persist in this browser. Checkout snapshots current
+server prices and availability into Neon (`012_orders.sql`); no payment gateway is
+connected and every order remains `unpaid` for payment on pickup. The request UUID
+deduplicates retries. Each receipt has a random cancellation capability; only its hash
+is stored in the database. Clearing browser storage loses access to those receipts.
+Admin sessions protect `/admin/orders`. Cancelled orders are retained in the database
+but omitted from the admin list; completed orders cannot be cancelled.
+
+`node backend/scripts/test-orders.mjs` exercises creation, retries and cancellation
+in temporary SQL tables inside a rolled-back transaction without changing live rows.
+

@@ -1,3 +1,5 @@
+import { OrdersService } from './orders.service.js';
+import { OrdersController, AdminOrdersController } from './orders.controller.js';
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
@@ -19,7 +21,7 @@ import { PosterController } from './poster.controller.js';
 
 @Module({
   imports: [],
-  controllers: [AppController, DatabaseController, CatalogController, AdminController, AnalyticsController, TelegramWebhookController, PosterController],
-  providers: [AppService, DatabaseService, ContentService, AdminAuthService, BotCommandsService, TelegramService, AnalyticsService, SupportRepository, BotInteractionsService, PosterService],
+  controllers: [OrdersController, AdminOrdersController, AppController, DatabaseController, CatalogController, AdminController, AnalyticsController, TelegramWebhookController, PosterController],
+  providers: [OrdersService, AppService, DatabaseService, ContentService, AdminAuthService, BotCommandsService, TelegramService, AnalyticsService, SupportRepository, BotInteractionsService, PosterService],
 })
 export class AppModule {}

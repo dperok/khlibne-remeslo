@@ -1,5 +1,6 @@
 'use client';
 
+import OrdersPanel from './orders-panel';
 import WheatLogo from '../wheat-logo';
 
 import Link from 'next/link';
@@ -104,9 +105,10 @@ export default function AdminPage() {
     </main> : <main className={styles.workspace}>
       <div className={styles.title}><div><p className={styles.eyebrow}>ХЛІБНЕ РЕМЕСЛО</p><h1>Ваша <em>майстерня.</em></h1></div><a href="/" target="_blank" rel="noopener noreferrer">Переглянути сайт ↗</a></div>
       {content.temporaryPassword && <aside className={styles.warning}>Використовується тимчасовий пароль. Змініть <code>ADMIN_PASSWORD</code> у кореневому <code>.env</code> та перезапустіть сервер.</aside>}
-      <nav className={styles.tabs} aria-label="Розділи панелі">{[['products', 'Каталог'], ['contacts', 'Контакти й адреса'], ['analytics', 'Відвідуваність'], ['bots', 'Telegram-боти']].map(([id, label]) => <button key={id} aria-pressed={tab === id} onClick={() => { setTab(id); setNotice(''); setError(''); }}>{label}</button>)}</nav>
+      <nav className={styles.tabs} aria-label="Розділи панелі">{[['orders', 'Замовлення'], ['products', 'Каталог'], ['contacts', 'Контакти й адреса'], ['analytics', 'Відвідуваність'], ['bots', 'Telegram-боти']].map(([id, label]) => <button key={id} aria-pressed={tab === id} onClick={() => { setTab(id); setNotice(''); setError(''); }}>{label}</button>)}</nav>
       <p role="alert" className={styles.error}>{error}</p><p role="status" className={styles.success}>{notice}</p>
       {tab === 'analytics' && <AnalyticsPanel />}
+      {tab === 'orders' && <OrdersPanel />}
       {tab === 'products' && <section className={styles.panel} style={{ marginBottom: 24 }}>
         <div className={styles.panelHeading}><h2>Наявність із Poster</h2><button disabled={busy || !content.poster.configured} onClick={() => action(async () => {
           const result = await api('poster/sync', 'POST'); const next = await refresh();
