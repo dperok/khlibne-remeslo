@@ -24,6 +24,11 @@ describe('Telegram location and two-bot correspondence', () => {
       delivered: vi.fn(async (_ticket: string, admin: number) => { delivered.add(admin); }),
       countDelivered: vi.fn(async () => delivered.size), ticketForButton: vi.fn(async () => ticket),
       savePrompt: vi.fn(), ticketForPrompt: vi.fn(async () => ticket), replied: vi.fn(async () => false), markReplied: vi.fn(), saveVisitorAnswer: vi.fn(), isVisitorReply: vi.fn(async () => false), cancelPrompts: vi.fn(), pendingReplyStatuses: vi.fn(async () => []), replyStatusNotified: vi.fn() };
+    repository.hasReply = vi.fn(async () => false);
+    repository.withReplyLock = vi.fn(async (_id: string, work: (store: SupportRepository) => Promise<void>) => { await work(repository as unknown as SupportRepository); return true; });
+    repository.saveConfirmation = vi.fn(async () => ({ id: ticket.id }));
+    repository.confirmationPrompt = vi.fn(); repository.getConfirmation = vi.fn();
+    repository.takeConfirmation = vi.fn(async () => true); repository.ticketById = vi.fn(async () => ticket);
     content = { get: async () => ({ bakery }) } as unknown as ContentService;
     service = new BotInteractionsService(repository as unknown as SupportRepository, new BotCommandsService(content), content);
     sent = [];
@@ -128,6 +133,38 @@ describe('Telegram location and two-bot correspondence', () => {
     expect(repository.cancelPrompts).toHaveBeenCalledWith(5711475783);
     expect(sent.at(-1)?.body.text).toContain('Режим відповіді завершено');
   });
+  it('requires explicit confirmation for any further answer, including an old prompt opened before another admin replied', async () => {
+    repository.hasReply.mockResolvedValue(true);
+    const message: BotMessage = { message_id: 200, from: { id: 470334534 }, chat: { id: 470334534, type: 'private' }, reply_to_message: { message_id: 102 }, text: 'Додаткова відповідь' };
+    await service.message('admin', message, call);
+    expect(sent.filter(entry => entry.token === 'visitor-token')).toHaveLength(0);
+    const prompt = sent.find(entry => String(entry.body.text).includes('Надіслати ще одну'))!;
+    expect(prompt.body.reply_markup).toMatchObject({ inline_keyboard: [[{ text: 'Підтвердити', callback_data: `confirm:${ticket.id}` }, { text: 'Скасувати', callback_data: `discard:${ticket.id}` }]] });
+    expect(repository.markReplied).not.toHaveBeenCalled();
+    repository.getConfirmation.mockResolvedValue({ id: ticket.id, ticket_id: ticket.id, source_message_id: '200', message_text: message.text });
+    const confirm = { ...callback(470334534), data: `confirm:${ticket.id}`, message: { message_id: 101, chat: { id: 470334534, type: 'private' } } };
+    await service.callback(confirm, call);
+    expect(sent.filter(entry => entry.token === 'visitor-token')).toHaveLength(1);
+    expect(repository.markReplied).toHaveBeenCalledWith(470334534, 200, ticket.id);
+    repository.takeConfirmation.mockResolvedValue(false);
+    await service.callback(confirm, call);
+    expect(sent.filter(entry => entry.token === 'visitor-token')).toHaveLength(1);
+  });
+  it('does not send expired, cancelled, or another admins confirmation', async () => {
+    await service.callback({ ...callback(5711475783), data: `confirm:${ticket.id}` }, call);
+    expect(repository.getConfirmation).toHaveBeenCalledWith(ticket.id, 5711475783, 99);
+    expect(sent.filter(entry => entry.token === 'visitor-token')).toHaveLength(0);
+    repository.getConfirmation.mockResolvedValue({ id: ticket.id });
+    await service.callback({ ...callback(470334534), data: `discard:${ticket.id}` }, call);
+    expect(repository.takeConfirmation).toHaveBeenCalledWith(ticket.id, 470334534);
+    expect(sent.filter(entry => entry.token === 'visitor-token')).toHaveLength(0);
+  });
+  it('does not send a second concurrent answer while another admin holds the ticket lock', async () => {
+    repository.withReplyLock.mockResolvedValue(false);
+    await service.message('admin', { message_id: 200, from: { id: 470334534 }, chat: { id: 470334534, type: 'private' }, reply_to_message: { message_id: 102 }, text: 'Відповідь' }, call);
+    expect(sent.filter(entry => entry.token === 'visitor-token')).toHaveLength(0);
+    expect(repository.markReplied).not.toHaveBeenCalled();
+  });
   it('does not reuse a reply prompt after a successful answer', async () => {
     let active = true;
     repository.ticketForPrompt.mockImplementation(async () => active ? ticket : undefined);
@@ -147,12 +184,13 @@ describe('Telegram location and two-bot correspondence', () => {
     expect(repository.cancelPrompts).not.toHaveBeenCalled();
     expect(repository.markReplied).not.toHaveBeenCalled();
   });
-  it('marks the original message and notifies both admins after a delivered reply', async () => {
+  it('marks both support messages but sends the proactive reply notice only to the opted-in admin', async () => {
     repository.pendingReplyStatuses.mockResolvedValue([470334534, 5711475783].map((id) => ({ ticket_id: ticket.id, admin_id: String(id), message_id: '99', answered_by: '470334534' })));
     await service.message('admin', { message_id: 200, from: { id: 470334534 }, chat: { id: 470334534, type: 'private' }, reply_to_message: { message_id: 102 }, text: 'Відповідь' }, call);
     expect(sent.filter((entry) => entry.method === 'editMessageReplyMarkup')).toHaveLength(2);
     for (const admin of ['470334534', '5711475783']) {
-      expect(sent).toContainEqual(expect.objectContaining({ token: 'admin-token', body: expect.objectContaining({ chat_id: admin, text: expect.stringContaining('вже відповів адміністратор 470334534'), reply_parameters: { message_id: 99, allow_sending_without_reply: true } }) }));
+      if (admin === '5711475783') expect(sent).toContainEqual(expect.objectContaining({ token: 'admin-token', body: expect.objectContaining({ chat_id: admin, text: expect.stringContaining('вже відповів адміністратор 470334534'), reply_parameters: { message_id: 99, allow_sending_without_reply: true } }) }));
+      else expect(sent.some(entry => entry.body.chat_id === admin && String(entry.body.text).includes('вже відповів'))).toBe(false);
       expect(repository.replyStatusNotified).toHaveBeenCalledWith(ticket.id, admin);
     }
   });

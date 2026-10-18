@@ -1,5 +1,6 @@
 import { ConflictException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { DatabaseService } from './database.service.js';
+import { receivesServiceNotifications } from './admin-notifications.js';
 import type { Content, Product } from './content.service.js';
 
 type MenuItem = { product_id: string; ingredient_id?: string };
@@ -47,7 +48,7 @@ export class PosterService {
   constructor(private readonly db: DatabaseService) {}
   async notifyFailure() {
     const token = process.env.TELEGRAM_ADMIN_BOT_TOKEN?.trim();
-    const admins = [...new Set((process.env.TELEGRAM_ADMIN_IDS ?? '').split(',').map(id => id.trim()).filter(id => /^\d+$/.test(id)))];
+    const admins = [...new Set((process.env.TELEGRAM_ADMIN_IDS ?? '').split(',').map(id => id.trim()).filter(id => /^\d+$/.test(id) && receivesServiceNotifications(id)))];
     if (!token || !admins.length) { this.logger.warn('Poster failure alert: admin bot is not configured'); return; }
     await Promise.allSettled(admins.map(async admin => {
       // Persistent per-recipient claim prevents duplicate alerts across serverless instances.

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ContentService } from './content.service.js';
+import { receivesServiceNotifications } from './admin-notifications.js';
 import { BotCommandsService } from './bot-commands.service.js';
 import type { BotMessage, BotRole } from './bot-commands.service.js';
 import { SupportRepository } from './support.repository.js';
@@ -50,7 +51,7 @@ export class BotInteractionsService {
         });
       } catch { /* The notification below also works when Telegram cannot edit an old message. */ }
       try {
-        await this.say('admin', status.admin_id, `✅ На звернення №${status.ticket_id.slice(0, 8)} вже відповів адміністратор ${status.answered_by}. Відповідь доставлено відвідувачу.`, call,
+        if (receivesServiceNotifications(status.admin_id)) await this.say('admin', status.admin_id, `✅ На звернення №${status.ticket_id.slice(0, 8)} вже відповів адміністратор ${status.answered_by}. Відповідь доставлено відвідувачу.`, call,
           { reply_parameters: { message_id: Number(status.message_id), allow_sending_without_reply: true } });
         await this.store.replyStatusNotified(status.ticket_id, status.admin_id);
       } catch { /* Persisted status is retried by the polling loop. */ }
@@ -74,6 +75,21 @@ export class BotInteractionsService {
   async callback(callback: BotCallback, call: TelegramCall) {
     const message = callback.message;
     if (!message || !this.commands.isAdmin({ ...message, from: callback.from })) return;
+    const confirmation = /^(confirm|discard):([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i.exec(callback.data ?? '');
+    if (confirmation && message.message_id) {
+      await call(this.token('admin'), 'answerCallbackQuery', { callback_query_id: callback.id });
+      const pending = await this.store.getConfirmation(confirmation[2], callback.from.id, message.message_id);
+      if (!pending) { await this.say('admin', callback.from.id, 'Підтвердження вже недоступне або прострочене.', call); return; }
+      if (confirmation[1] === 'discard') {
+        await this.store.takeConfirmation(pending.id, callback.from.id);
+        await this.say('admin', callback.from.id, 'Повторну відповідь скасовано.', call);
+      } else {
+        const ticket = await this.store.ticketById(pending.ticket_id);
+        if (!ticket) return;
+        await this.answer(callback.from.id, { message_id: Number(pending.source_message_id), text: pending.message_text, from: callback.from, chat: { id: callback.from.id, type: 'private' } }, ticket, call, pending.id);
+      }
+      return;
+    }
     const match = /^reply:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i.exec(callback.data ?? '');
     if (!match || !message.message_id) return;
     const ticket = await this.store.ticketForButton(match[1], callback.from.id, message.message_id);
@@ -90,22 +106,33 @@ export class BotInteractionsService {
     await call(this.token('user'), 'answerCallbackQuery', { callback_query_id: callback.id });
     await call(this.token('user'), 'editMessageText', { chat_id: message.chat.id, message_id: message.message_id, text: 'Каталог тепер доступний на сайті пекарні. /site — відкрити сайт.', reply_markup: { inline_keyboard: [] } });
   }
-  private async answer(admin: number, message: BotMessage, ticket: Ticket, call: TelegramCall) {
+  private async answer(admin: number, message: BotMessage, ticket: Ticket, call: TelegramCall, confirmationId?: string) {
     if (!message.message_id) return;
     if (!message.text) { await this.say('admin', admin, 'Надішліть текстову відповідь у відповідь на запит бота.', call); return; }
-    if (await this.store.replied(admin, message.message_id)) return;
-    const text = `Відповідь пекарні:\n\n${message.text}`;
-    try {
-      for (let offset = 0; offset < text.length; offset += 4000) {
-        const sent = await this.say('user', ticket.user_id, text.slice(offset, offset + 4000), call,
-          { reply_parameters: { message_id: Number(ticket.source_message_id), allow_sending_without_reply: true } });
-        await this.store.saveVisitorAnswer(ticket.id, sent.message_id);
+    let delivered = false;
+    const locked = await this.store.withReplyLock(ticket.id, async store => {
+      if (await store.replied(admin, message.message_id!)) return;
+      if (confirmationId) { if (!await store.takeConfirmation(confirmationId, admin)) return; }
+      else if (await store.hasReply(ticket.id)) {
+        const pending = await store.saveConfirmation(admin, message.message_id!, ticket.id, message.text!);
+        const preview = message.text!.slice(0, 3000);
+        const prompt = await this.say('admin', admin, `На звернення №${ticket.id.slice(0,8)} вже відповіли. Надіслати ще одну відповідь?\n\n${preview}`, call,
+          { reply_markup: { inline_keyboard: [[{ text: 'Підтвердити', callback_data: `confirm:${pending.id}` }, { text: 'Скасувати', callback_data: `discard:${pending.id}` }]] } });
+        await store.confirmationPrompt(pending.id, prompt.message_id); return;
       }
-    } catch {
-      await this.say('admin', admin, 'Відповідь не доставлено. Можливо, відвідувач заблокував бота. Спробуйте пізніше.', call); return;
-    }
-    await this.store.markReplied(admin, message.message_id, ticket.id);
-    await this.store.cancelPrompts(admin);
+      const text = `Відповідь пекарні:\n\n${message.text}`;
+      try {
+        for (let offset = 0; offset < text.length; offset += 4000) {
+          const sent = await this.say('user', ticket.user_id, text.slice(offset, offset + 4000), call,
+            { reply_parameters: { message_id: Number(ticket.source_message_id), allow_sending_without_reply: true } });
+          await store.saveVisitorAnswer(ticket.id, sent.message_id);
+        }
+      } catch { await this.say('admin', admin, 'Відповідь не доставлено. Можливо, відвідувач заблокував бота. Спробуйте пізніше.', call); return; }
+      await store.markReplied(admin, message.message_id!, ticket.id);
+      await store.cancelPrompts(admin); delivered = true;
+    });
+    if (!locked) { await this.say('admin', admin, 'Інший адміністратор зараз відповідає на це звернення. Спробуйте ще раз.', call); return; }
+    if (!delivered) return;
     await this.syncReplyStatuses(call);
     await this.say('admin', admin, 'Відповідь надіслано відвідувачу. Режим відповіді завершено. Щоб відповісти знову, натисніть «Відповісти» під зверненням.', call,
       { reply_markup: { remove_keyboard: true } });
