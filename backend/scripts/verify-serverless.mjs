@@ -78,6 +78,8 @@ try {
   assert.equal(visitorAnswers(), 1);
   const confirmation = (await db.query('SELECT * FROM bakery_support_reply_confirmations WHERE admin_id=$1 AND ticket_id=$2', [adminB,ticketId])).rows[0];
   assert.ok(confirmation); assert.equal(confirmation.message_text, 'Additional answer');
+  const previous = await store.latestReply(ticketId); assert.equal(String(previous.admin_id), String(adminA)); assert.equal(previous.message_text, 'First answer');
+  assert.ok(telegramCalls.some(entry => entry.method === 'sendMessage' && String(entry.body.chat_id) === String(adminB) && entry.body.text.includes('Остання відповідь') && entry.body.text.includes('First answer') && entry.body.text.includes(String(adminA))));
   const callback = admin => ({ id: 'test-confirm', from: { id: admin }, data: `confirm:${confirmation.id}`, message: { message_id: Number(confirmation.prompt_id), chat: { id: admin, type: 'private' } } });
   await webhookAdmin({ update_id: user+4, callback_query: callback(adminA) }); assert.equal(visitorAnswers(), 1);
   await webhookAdmin({ update_id: user+5, callback_query: callback(adminB) }); assert.equal(visitorAnswers(), 2);

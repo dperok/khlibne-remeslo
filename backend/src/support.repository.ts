@@ -16,6 +16,9 @@ export class SupportRepository {
     });
   }
   async hasReply(ticket: string) { return (await this.db.query('SELECT 1 FROM bakery_support_replies WHERE ticket_id=$1 LIMIT 1', [ticket])).rowCount! > 0; }
+  async latestReply(ticket: string) {
+    return (await this.db.query<{ admin_id: string; admin_name: string | null; message_text: string | null }>('SELECT admin_id,admin_name,message_text FROM bakery_support_replies WHERE ticket_id=$1 ORDER BY created_at DESC,source_message_id DESC LIMIT 1', [ticket])).rows[0];
+  }
   async saveConfirmation(admin: number, messageId: number, ticket: string, text: string) {
     await this.db.query("DELETE FROM bakery_support_reply_confirmations WHERE created_at < now()-interval '24 hours'");
     return (await this.db.query<ReplyConfirmation>('INSERT INTO bakery_support_reply_confirmations(id,admin_id,source_message_id,ticket_id,message_text) VALUES($1,$2,$3,$4,$5) ON CONFLICT(admin_id,source_message_id) DO UPDATE SET admin_id=excluded.admin_id RETURNING *', [randomUUID(),admin,messageId,ticket,text])).rows[0];
@@ -47,7 +50,7 @@ export class SupportRepository {
   async cancelPrompts(admin: number) { await this.db.query('DELETE FROM bakery_support_prompts WHERE admin_id=$1', [admin]); await this.db.query('DELETE FROM bakery_support_reply_confirmations WHERE admin_id=$1', [admin]); }
   async ticketForPrompt(admin: number, promptId: number) { return (await this.db.query<Ticket>("SELECT m.* FROM bakery_support_messages m JOIN bakery_support_prompts p ON p.ticket_id=m.id WHERE p.admin_id=$1 AND p.prompt_id=$2 AND p.created_at > now() - interval '24 hours'", [admin, promptId])).rows[0]; }
   async replied(admin: number, messageId: number) { return (await this.db.query('SELECT 1 FROM bakery_support_replies WHERE admin_id=$1 AND source_message_id=$2', [admin, messageId])).rowCount! > 0; }
-  async markReplied(admin: number, messageId: number, ticket: string) { await this.db.query('INSERT INTO bakery_support_replies(admin_id,source_message_id,ticket_id) VALUES($1,$2,$3) ON CONFLICT DO NOTHING', [admin, messageId, ticket]); }
+  async markReplied(admin: number, messageId: number, ticket: string, text?: string, adminName?: string) { await this.db.query('INSERT INTO bakery_support_replies(admin_id,source_message_id,ticket_id,message_text,admin_name) VALUES($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING', [admin, messageId, ticket, text ?? null, adminName ?? null]); }
   async saveVisitorAnswer(ticket: string, messageId: number) {
     await this.db.query('INSERT INTO bakery_support_visitor_answers(user_id,message_id,ticket_id) SELECT user_id,$2,id FROM bakery_support_messages WHERE id=$1 ON CONFLICT DO NOTHING', [ticket, messageId]);
   }

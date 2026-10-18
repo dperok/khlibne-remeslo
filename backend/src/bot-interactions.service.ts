@@ -7,7 +7,7 @@ import { SupportRepository } from './support.repository.js';
 import type { Ticket } from './support.repository.js';
 
 export type TelegramCall = <T>(token: string, method: string, body: Record<string, unknown>) => Promise<T>;
-export type BotCallback = { id: string; from: { id: number }; data?: string; message?: BotMessage };
+export type BotCallback = { id: string; from: { id: number; first_name?: string; username?: string }; data?: string; message?: BotMessage };
 const menu = ['🥐 Випічка', '📍 Адреса', '☎️ Контакти', '🌾 Сайт'];
 @Injectable()
 export class BotInteractionsService {
@@ -115,8 +115,14 @@ export class BotInteractionsService {
       if (confirmationId) { if (!await store.takeConfirmation(confirmationId, admin)) return; }
       else if (await store.hasReply(ticket.id)) {
         const pending = await store.saveConfirmation(admin, message.message_id!, ticket.id, message.text!);
-        const preview = message.text!.slice(0, 3000);
-        const prompt = await this.say('admin', admin, `На звернення №${ticket.id.slice(0,8)} вже відповіли. Надіслати ще одну відповідь?\n\n${preview}`, call,
+        const previous = await store.latestReply(ticket.id);
+        if (previous) {
+          const author = previous.admin_name ? `${previous.admin_name} · ID ${previous.admin_id}` : `Telegram ID ${previous.admin_id}`;
+          const context = `Остання відповідь на звернення №${ticket.id.slice(0,8)}\nАдміністратор: ${author}\n\n${previous.message_text ?? 'Текст давньої відповіді не збережено.'}`;
+          for (let offset = 0; offset < context.length; offset += 3800) await this.say('admin', admin, context.slice(offset, offset + 3800), call);
+        }
+        const preview = message.text!.slice(0, 3000) + (message.text!.length > 3000 ? '\n… (показано початок вашої відповіді)' : '');
+        const prompt = await this.say('admin', admin, `На звернення №${ticket.id.slice(0,8)} вже відповіли. Надіслати ще одну відповідь?\n\nВаша нова відповідь:\n${preview}`, call,
           { reply_markup: { inline_keyboard: [[{ text: 'Підтвердити', callback_data: `confirm:${pending.id}` }, { text: 'Скасувати', callback_data: `discard:${pending.id}` }]] } });
         await store.confirmationPrompt(pending.id, prompt.message_id); return;
       }
@@ -128,7 +134,8 @@ export class BotInteractionsService {
           await store.saveVisitorAnswer(ticket.id, sent.message_id);
         }
       } catch { await this.say('admin', admin, 'Відповідь не доставлено. Можливо, відвідувач заблокував бота. Спробуйте пізніше.', call); return; }
-      await store.markReplied(admin, message.message_id!, ticket.id);
+      const adminName = [message.from?.first_name, message.from?.username ? `(@${message.from.username})` : ''].filter(Boolean).join(' ') || `Telegram ID ${admin}`;
+      await store.markReplied(admin, message.message_id!, ticket.id, message.text!, adminName);
       await store.cancelPrompts(admin); delivered = true;
     });
     if (!locked) { await this.say('admin', admin, 'Інший адміністратор зараз відповідає на це звернення. Спробуйте ще раз.', call); return; }

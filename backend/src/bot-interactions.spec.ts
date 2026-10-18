@@ -24,6 +24,7 @@ describe('Telegram location and two-bot correspondence', () => {
       delivered: vi.fn(async (_ticket: string, admin: number) => { delivered.add(admin); }),
       countDelivered: vi.fn(async () => delivered.size), ticketForButton: vi.fn(async () => ticket),
       savePrompt: vi.fn(), ticketForPrompt: vi.fn(async () => ticket), replied: vi.fn(async () => false), markReplied: vi.fn(), saveVisitorAnswer: vi.fn(), isVisitorReply: vi.fn(async () => false), cancelPrompts: vi.fn(), pendingReplyStatuses: vi.fn(async () => []), replyStatusNotified: vi.fn() };
+    repository.latestReply = vi.fn(async () => ({ admin_id: '5711475783', admin_name: 'Адміністратор (@baker)', message_text: 'Так, круасани є.' }));
     repository.hasReply = vi.fn(async () => false);
     repository.withReplyLock = vi.fn(async (_id: string, work: (store: SupportRepository) => Promise<void>) => { await work(repository as unknown as SupportRepository); return true; });
     repository.saveConfirmation = vi.fn(async () => ({ id: ticket.id }));
@@ -128,7 +129,7 @@ describe('Telegram location and two-bot correspondence', () => {
     await service.message('admin', { message_id: 200, from: { id: 5711475783 }, chat: { id: 5711475783, type: 'private' }, reply_to_message: { message_id: 102 }, text: 'Так, чекаємо на вас!' }, call);
     expect(repository.ticketForPrompt).toHaveBeenCalledWith(5711475783, 102);
     expect(sent).toContainEqual(expect.objectContaining({ token: 'visitor-token', body: expect.objectContaining({ chat_id: '12345', text: 'Відповідь пекарні:\n\nТак, чекаємо на вас!', reply_parameters: { message_id: 7, allow_sending_without_reply: true } }) }));
-    expect(repository.markReplied).toHaveBeenCalledWith(5711475783, 200, ticket.id);
+    expect(repository.markReplied).toHaveBeenCalledWith(5711475783, 200, ticket.id, 'Так, чекаємо на вас!', expect.any(String));
     expect(repository.saveVisitorAnswer).toHaveBeenCalledWith(ticket.id, expect.any(Number));
     expect(repository.cancelPrompts).toHaveBeenCalledWith(5711475783);
     expect(sent.at(-1)?.body.text).toContain('Режим відповіді завершено');
@@ -138,17 +139,36 @@ describe('Telegram location and two-bot correspondence', () => {
     const message: BotMessage = { message_id: 200, from: { id: 470334534 }, chat: { id: 470334534, type: 'private' }, reply_to_message: { message_id: 102 }, text: 'Додаткова відповідь' };
     await service.message('admin', message, call);
     expect(sent.filter(entry => entry.token === 'visitor-token')).toHaveLength(0);
+    const context = sent.find(entry => String(entry.body.text).startsWith('Остання відповідь'))!;
+    expect(context.body.text).toContain('Адміністратор (@baker) · ID 5711475783');
+    expect(context.body.text).toContain('Так, круасани є.');
+    expect(context.body.disable_notification).toBe(true);
     const prompt = sent.find(entry => String(entry.body.text).includes('Надіслати ще одну'))!;
     expect(prompt.body.reply_markup).toMatchObject({ inline_keyboard: [[{ text: 'Підтвердити', callback_data: `confirm:${ticket.id}` }, { text: 'Скасувати', callback_data: `discard:${ticket.id}` }]] });
     expect(repository.markReplied).not.toHaveBeenCalled();
     repository.getConfirmation.mockResolvedValue({ id: ticket.id, ticket_id: ticket.id, source_message_id: '200', message_text: message.text });
-    const confirm = { ...callback(470334534), data: `confirm:${ticket.id}`, message: { message_id: 101, chat: { id: 470334534, type: 'private' } } };
+    const confirm = { ...callback(470334534), data: `confirm:${ticket.id}`, message: { message_id: repository.confirmationPrompt.mock.calls[0][1], chat: { id: 470334534, type: 'private' } } };
     await service.callback(confirm, call);
     expect(sent.filter(entry => entry.token === 'visitor-token')).toHaveLength(1);
-    expect(repository.markReplied).toHaveBeenCalledWith(470334534, 200, ticket.id);
+    expect(repository.markReplied).toHaveBeenCalledWith(470334534, 200, ticket.id, message.text, expect.any(String));
     repository.takeConfirmation.mockResolvedValue(false);
     await service.callback(confirm, call);
     expect(sent.filter(entry => entry.token === 'visitor-token')).toHaveLength(1);
+  });
+  it('shows the author and an explicit fallback when an older reply has no saved text', async () => {
+    repository.hasReply.mockResolvedValue(true); repository.latestReply.mockResolvedValue({ admin_id: '470334534', admin_name: null, message_text: null });
+    await service.message('admin', { message_id: 202, from: { id: 5711475783 }, chat: { id: 5711475783, type: 'private' }, reply_to_message: { message_id: 102 }, text: 'Нова відповідь' }, call);
+    const context = sent.find(entry => String(entry.body.text).startsWith('Остання відповідь'))!;
+    expect(context.body.text).toContain('Telegram ID 470334534'); expect(context.body.text).toContain('Текст давньої відповіді не збережено.');
+    expect(sent.filter(entry => entry.token === 'visitor-token')).toHaveLength(0);
+  });
+  it('shows all of a long previous answer in chunks before the confirmation button', async () => {
+    repository.hasReply.mockResolvedValue(true); repository.latestReply.mockResolvedValue({ admin_id: '470334534', admin_name: 'Пекар', message_text: 'А'.repeat(5000) });
+    await service.message('admin', { message_id: 203, from: { id: 5711475783 }, chat: { id: 5711475783, type: 'private' }, reply_to_message: { message_id: 102 }, text: 'Нова відповідь' }, call);
+    const messages = sent.filter(entry => entry.method === 'sendMessage');
+    expect(messages.slice(0,-1).map(entry => entry.body.text).join('')).toContain('А'.repeat(5000));
+    expect(messages.every(entry => String(entry.body.text).length <= 4096)).toBe(true);
+    expect(messages.at(-1)?.body.reply_markup).toBeDefined();
   });
   it('does not send expired, cancelled, or another admins confirmation', async () => {
     await service.callback({ ...callback(5711475783), data: `confirm:${ticket.id}` }, call);
