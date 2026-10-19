@@ -43,3 +43,4 @@
 @media(max-width:760px){.productHeading{flex-wrap:wrap;justify-content:flex-end;gap:12px}.productHeading .productTitle{flex-basis:100%}.productDetails,.quickControl{width:25px;height:25px}.quickControlExpanded{width:calc(60px + var(--quantity-digits,2)*16px)}.quickControl button{width:23px;height:23px}.quickControl>input{left:23px;right:23px;height:23px;max-width:calc(100% - 46px)}}
 
 .quickControl>input{margin:auto;outline-offset:-2px}
+.quickControl>input:focus{outline:2px solid var(--gold);outline-offset:-2px;caret-color:var(--gold)}

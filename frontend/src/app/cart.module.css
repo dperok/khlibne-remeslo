@@ -4,3 +4,4 @@
 @media(max-width:760px){.trigger{min-width:84px;padding:9px;gap:7px}}
 
 .quantity .quantityInput{padding:4px 0;text-align:center;border:0;border-radius:0;background:transparent;font-variant-numeric:tabular-nums;min-width:3ch}
+.quantity .quantityInput:focus{outline:2px solid var(--gold);outline-offset:2px;caret-color:var(--gold)}
