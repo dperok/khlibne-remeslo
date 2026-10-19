@@ -53,6 +53,12 @@ export default function BakerySite({ products, bakery, demo = false }: { product
     cart.quantity(product.id, (cart.lines.find(line => line.id === product.id)?.quantity ?? 0) + 1);
     setAdded(`Додано до кошика: ${product.name}`);
   }
+  function quantityControl(product: Product) {
+    const quantity = cart.lines.find(line => line.id === product.id)?.quantity ?? 0;
+    return <div className={`${styles.quickControl} ${quantity > 0 ? styles.quickControlExpanded : ''}`} role="group" aria-label={`Кількість у кошику: ${product.name}`}>
+      {quantity > 0 ? <><button disabled={!cart.ready || !!cart.pending} onClick={() => cart.quantity(product.id, quantity - 1)} aria-label={`Зменшити кількість: ${product.name}`}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg></button><span aria-live="polite" aria-atomic="true">{quantity}</span><button disabled={cannotAdd(product)} onClick={() => addProduct(product)} aria-label={`Збільшити кількість: ${product.name}`}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg></button></> : <button disabled={cannotAdd(product)} onClick={() => addProduct(product)} aria-label={`Додати до кошика: ${product.name}`} title={product.available === false ? 'Немає в наявності' : 'Додати до кошика'}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg></button>}
+    </div>;
+  }
   function openProduct(product: Product) { setAdded(''); setSelected(product); dialog.current?.showModal(); }
 
   return <>
@@ -105,7 +111,7 @@ export default function BakerySite({ products, bakery, demo = false }: { product
         <div className={styles.products} aria-live="polite">{visible.slice((currentPage - 1) * 18, currentPage * 18).map((product, index) => <article key={product.id} className={`${styles.product} ${product.available === false ? styles.unavailableProduct : ''}`}>
           <button className={styles.productImage} onClick={() => openProduct(product)} aria-label={`Детальніше: ${product.name}`}><Image unoptimized={product.image.startsWith('https://')} src={product.image} alt={product.name} fill sizes="(max-width: 440px) 100vw, (max-width: 760px) 50vw, 33vw" />{product.tag && <span className={styles.productTag}>{product.tag}</span>}<span className={styles.imageIndex}>{((currentPage - 1) * 18 + index + 1).toString().padStart(2, '0')}</span></button>
           <div className={styles.productMeta}><span>{product.categoryLabel}</span><span className={styles.price}>{product.price != null ? `${product.price.toLocaleString('uk-UA')} ₴` : demo ? 'Приклад асортименту' : ''}</span></div>
-          <div className={styles.productHeading}><button className={styles.productTitle} onClick={() => openProduct(product)}><h3>{product.name}</h3><span><Arrow diagonal /></span></button><button className={styles.quickAdd} disabled={cannotAdd(product)} onClick={() => addProduct(product)} aria-label={`Додати до кошика: ${product.name}`} title={product.available === false ? 'Немає в наявності' : 'Додати до кошика'}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg></button></div>
+          <div className={styles.productHeading}><button className={styles.productTitle} onClick={() => openProduct(product)}><h3>{product.name}</h3></button>{quantityControl(product)}<button className={styles.productDetails} onClick={() => openProduct(product)} aria-label={`Відкрити опис: ${product.name}`}><Arrow diagonal /></button></div>
           {product.available === false && <p className={styles.stockStatus}>Немає в наявності</p>}
           <p className={styles.productDescription}>{product.description}</p>
         </article>)}</div>
