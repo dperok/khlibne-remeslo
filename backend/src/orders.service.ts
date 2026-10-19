@@ -1,3 +1,4 @@
+import { cartQuantityLimit, MAX_QUANTITY_DIGITS } from './cart-limits.js';
 import { BadRequestException, ConflictException, HttpException, Injectable, NotFoundException } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import { DatabaseService } from './database.service.js';
@@ -13,7 +14,7 @@ function tokenHash(token: unknown) {
   if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) throw new NotFoundException('Замовлення не знайдено');
   return digest(token);
 }
-export function validateOrder(body: Record<string, unknown>) {
+export function validateOrder(body: Record<string, unknown>, digits = 2) {
   if (!body || typeof body !== 'object' || typeof body.id !== 'string' || !uuid.test(body.id)) throw new BadRequestException('Некоректне замовлення');
   const hash = tokenHash(body.token);
   if (typeof body.customerName !== 'string' || !body.customerName.trim() || body.customerName.length > 80) throw new BadRequestException('Вкажіть ім’я');
@@ -26,14 +27,16 @@ export function validateOrder(body: Record<string, unknown>) {
   const items = body.items.map((item: unknown) => {
     if (!item || typeof item !== 'object') throw new BadRequestException('Некоректний товар');
     const { id, quantity } = item as Record<string, unknown>;
-    if (typeof id !== 'string' || id.length > 100 || !id || ids.has(id) || !Number.isInteger(quantity) || (quantity as number) < 1 || (quantity as number) > 99) throw new BadRequestException('Некоректна кількість товару');
+    if (typeof id !== 'string' || id.length > 100 || !id || ids.has(id) || !Number.isInteger(quantity) || (quantity as number) < 1 || (quantity as number) > cartQuantityLimit(digits)) throw new BadRequestException('Некоректна кількість товару');
     ids.add(id); return { id, quantity: quantity as number };
   }).sort((a, b) => a.id.localeCompare(b.id));
   const request = { customerName: body.customerName.trim(), phone: `+${phone}`, items };
   return { ...request, id: body.id, tokenHash: hash, requestHash: digest(JSON.stringify(request)) };
 }
 export function priceOrder(items: { id: string; quantity: number }[], content: Content) {
+  const maxQuantity = cartQuantityLimit(content.bakery?.quantityDigits);
   const lines: OrderItem[] = items.map(item => {
+    if (item.quantity > maxQuantity) throw new BadRequestException(`Максимальна кількість одного товару: ${maxQuantity}. Оновіть сторінку.`);
     const product = content.products.find(p => p.id === item.id && p.visible !== false);
     if (!product || product.available === false || typeof product.price !== 'number' || !Number.isFinite(product.price) || product.price < 0) throw new ConflictException(`Товар недоступний: ${product?.name ?? item.id}. Оновіть вітрину.`);
     return { ...item, name: product.name, unitKopecks: Math.round(product.price * 100) };
@@ -46,7 +49,7 @@ export function priceOrder(items: { id: string; quantity: number }[], content: C
 export class OrdersService {
   constructor(private readonly db: DatabaseService) {}
   async create(body: Record<string, unknown>) {
-    const input = validateOrder(body);
+    const input = validateOrder(body, MAX_QUANTITY_DIGITS);
     return this.db.transaction(async client => {
       // Serialize retries across serverless instances before reading/inserting the order.
       await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [`order:${input.id}`]);

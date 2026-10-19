@@ -1,6 +1,9 @@
 'use client';
 
 import Image from 'next/image';
+import { cartQuantityDigits, cartQuantityLimit } from '../../../backend/src/cart-limits';
+import QuantityInput from './quantity-input';
+import type { CSSProperties } from 'react';
 import Cart, { useCart } from './cart';
 import cartStyles from './cart.module.css';
 
@@ -15,7 +18,7 @@ import OpeningSchedule from './opening-schedule';
 import type { OpeningHours } from '../../../backend/src/opening-hours';
 
 export type Product = { available?: boolean; availabilityMode?: 'poster' | 'manual'; price?: number; id: string; name: string; category: string; categoryLabel: string; image: string; description: string; ingredients: string; allergens: string; tag: string };
-export type Bakery = { name: string; city: string; address: string; fullAddress: string; mapsUrl: string; phone: string | null; instagram: string | null; email: string | null; latitude?: number; longitude?: number; openingHours?: OpeningHours };
+export type Bakery = { name: string; city: string; address: string; fullAddress: string; mapsUrl: string; phone: string | null; instagram: string | null; email: string | null; latitude?: number; longitude?: number; openingHours?: OpeningHours; quantityDigits?: number };
 
 function Arrow({ diagonal = false }: { diagonal?: boolean }) {
   return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d={diagonal ? 'M6 18 18 6M6 6h12v12' : 'M4 12h16m-6-6 6 6-6 6'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
@@ -25,7 +28,9 @@ function Pin() {
 }
 
 export default function BakerySite({ products, bakery, demo = false }: { products: Product[]; bakery: Bakery; demo?: boolean }) {
-  const cart = useCart();
+  const quantityDigits = cartQuantityDigits(bakery.quantityDigits);
+  const maxQuantity = cartQuantityLimit(quantityDigits);
+  const cart = useCart(maxQuantity);
   const [cartOpen, setCartOpen] = useState(false);
   const [added, setAdded] = useState('');
   const [page, setPage] = useState(1);
@@ -45,7 +50,7 @@ export default function BakerySite({ products, bakery, demo = false }: { product
   }
   function cannotAdd(product: Product) {
     return !cart.ready || !!cart.pending || demo || product.available === false || product.price == null ||
-      (cart.lines.find(line => line.id === product.id)?.quantity ?? 0) >= 99 ||
+      (cart.lines.find(line => line.id === product.id)?.quantity ?? 0) >= maxQuantity ||
       (cart.lines.length >= 50 && !cart.lines.some(line => line.id === product.id));
   }
   function addProduct(product: Product) {
@@ -55,8 +60,8 @@ export default function BakerySite({ products, bakery, demo = false }: { product
   }
   function quantityControl(product: Product) {
     const quantity = cart.lines.find(line => line.id === product.id)?.quantity ?? 0;
-    return <div className={`${styles.quickControl} ${quantity > 0 ? styles.quickControlExpanded : ''}`} role="group" aria-label={`Кількість у кошику: ${product.name}`}>
-      {quantity > 0 && <><button className={styles.quickDecrease} disabled={!cart.ready || !!cart.pending} onClick={() => cart.quantity(product.id, quantity - 1)} aria-label={`Зменшити кількість: ${product.name}`}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg></button><span aria-live="polite" aria-atomic="true">{quantity}</span></>}
+    return <div className={`${styles.quickControl} ${quantity > 0 ? styles.quickControlExpanded : ''}`} style={{ '--quantity-digits': quantityDigits } as CSSProperties} role="group" aria-label={`Кількість у кошику: ${product.name}`}>
+      {quantity > 0 && <><button className={styles.quickDecrease} disabled={!cart.ready || !!cart.pending} onClick={() => cart.quantity(product.id, quantity - 1)} aria-label={`Зменшити кількість: ${product.name}`}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg></button><QuantityInput value={quantity} digits={quantityDigits} disabled={!cart.ready || !!cart.pending} label={`Кількість: ${product.name}`} onChange={amount => cart.quantity(product.id, amount)} /></>}
       <button className={styles.quickIncrease} disabled={cannotAdd(product)} onClick={() => addProduct(product)} aria-label={`${quantity > 0 ? 'Збільшити кількість' : 'Додати до кошика'}: ${product.name}`} title={product.available === false ? 'Немає в наявності' : 'Додати до кошика'}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg></button>
     </div>;
   }

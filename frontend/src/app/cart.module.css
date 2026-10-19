@@ -2,3 +2,5 @@
 
 .trigger{justify-content:center;min-width:96px;min-height:52px;padding:9px 12px;color:inherit;border-color:currentColor;letter-spacing:normal}.trigger>span{display:grid;place-items:center;min-width:26px;height:26px;padding:3px;border:0;opacity:1;font-size:13px}.productActions{display:flex;flex-wrap:wrap;align-items:center;gap:18px;margin-top:20px}.addedNotice{margin-top:12px}.addedNotice:empty{display:none}
 @media(max-width:760px){.trigger{min-width:84px;padding:9px;gap:7px}}
+
+.quantity .quantityInput{padding:4px 0;text-align:center;border:0;border-radius:0;background:transparent;font-variant-numeric:tabular-nums;min-width:3ch}

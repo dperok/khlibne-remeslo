@@ -20,4 +20,13 @@ describe('order validation and authoritative pricing', () => {
   it('rejects unavailable, hidden and missing-price products', () => {
     for (const product of [{ available: false, price: 20 }, { visible: false, price: 20 }, { available: true }]) expect(() => priceOrder(input.items, { products: [{ id: 'bread', ...product }] } as Content)).toThrow();
   });
+  it('enforces the configured digit limit on the server', () => {
+    const content = { products: [{ id: 'bread', name: 'Хліб', price: 1 }], bakery: { quantityDigits: 1 } } as Content;
+    expect(() => priceOrder([{ id: 'bread', quantity: 10 }], content)).toThrow();
+    expect(priceOrder([{ id: 'bread', quantity: 9 }], content).totalKopecks).toBe(900);
+    content.bakery.quantityDigits = 3;
+    expect(priceOrder(validateOrder({ ...input, items: [{ id: 'bread', quantity: 999 }] }, 4).items, content).totalKopecks).toBe(99900);
+    expect(() => priceOrder([{ id: 'bread', quantity: 1000 }], content)).toThrow();
+    expect(() => validateOrder({ ...input, items: [{ id: 'bread', quantity: 10000 }] }, 4)).toThrow();
+  });
 });

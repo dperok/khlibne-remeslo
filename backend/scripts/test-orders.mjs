@@ -5,6 +5,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import assert from 'node:assert/strict';
 import pg from 'pg';
 import { OrdersService } from '../dist/orders.service.js';
+import { ContentService } from '../dist/content.service.js';
 config({ path: ['.env.local', '.env'], quiet: true });
 const url = new URL(process.env.DATABASE_URL_UNPOOLED); url.searchParams.set('sslmode', 'verify-full');
 const client = new pg.Client({ connectionString: url.toString() });
@@ -13,8 +14,8 @@ try {
   await client.query('BEGIN');
   const sql = (await readFile(new URL('../migrations/012_orders.sql', import.meta.url), 'utf8')).replace('CREATE TABLE IF NOT EXISTS bakery_orders', 'CREATE TEMP TABLE bakery_orders');
   await client.query(sql); await client.query(sql.replace('CREATE TEMP TABLE bakery_orders', 'CREATE TEMP TABLE IF NOT EXISTS bakery_orders'));
-  await client.query('CREATE TEMP TABLE bakery_site_content (id smallint PRIMARY KEY, content jsonb)');
-  await client.query('INSERT INTO bakery_site_content VALUES (1,$1)', [JSON.stringify({ products: [{ id: 'test-bread', name: 'Тестовий хліб', visible: true, available: true, price: 31.25 }, { id: 'absent', available: false, price: 10 }], bakery: { fullAddress: 'Тестова адреса' } })]);
+  await client.query('CREATE TEMP TABLE bakery_site_content (id smallint PRIMARY KEY, content jsonb, updated_at timestamptz DEFAULT now())');
+  await client.query('INSERT INTO bakery_site_content (id,content) VALUES (1,$1)', [JSON.stringify({ products: [{ id: 'test-bread', name: 'Тестовий хліб', visible: true, available: true, price: 31.25 }, { id: 'absent', available: false, price: 10 }], bakery: { fullAddress: 'Тестова адреса' } })]);
   const service = new OrdersService({ transaction: work => work(client), query: (sql, values) => client.query(sql, values) });
   const input = { id: randomUUID(), token: randomBytes(32).toString('hex'), customerName: 'Тест', phone: '0660000000', items: [{ id: 'test-bread', quantity: 2 }], totalKopecks: 1, paymentStatus: 'paid' };
   const order = await service.create(input);
@@ -32,5 +33,16 @@ try {
   const second = await service.create({ ...input, id: randomUUID() });
   await service.update(second.id, 'completed');
   await assert.rejects(service.customerOrder(second.id, input.token, true));
+  const contentService = new ContentService({ transaction: work => work(client), query: (sql, values) => client.query(sql, values) });
+  const bakery = { city: 'Тест', address: 'Тест', fullAddress: 'Тестова адреса', mapsUrl: 'https://maps.google.com', phone: null, email: null, instagram: null };
+  await contentService.saveBakery({ ...bakery, quantityDigits: 1 });
+  assert.equal((await contentService.get()).bakery.quantityDigits, 1);
+  const large = { ...input, id: randomUUID(), items: [{ id: 'test-bread', quantity: 100 }] };
+  await assert.rejects(service.create(large));
+  await contentService.saveBakery({ ...bakery, quantityDigits: 3 });
+  assert.equal((await service.create(large)).items[0].quantity, 100);
+  await contentService.saveBakery({ ...bakery, quantityDigits: 2 });
+  await assert.rejects(service.create({ ...large, id: randomUUID() }));
+  console.log('PASS configurable quantity digits: persisted settings 1/3/2, checkout accepts or rejects against saved limit');
   console.log('PASS orders SQL: migration repeatable, server prices, unpaid, retry deduplication, token protection, cancellation hidden from admin, completed-order guard, unavailable-item guard');
 } finally { await client.query('ROLLBACK'); await client.end(); }

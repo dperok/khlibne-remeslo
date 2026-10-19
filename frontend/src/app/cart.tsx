@@ -1,5 +1,6 @@
 'use client';
 
+import QuantityInput from './quantity-input';
 import { useEffect, useRef, useState } from 'react';
 import type { Bakery, Product } from './bakery-site';
 import type { Order } from '../../../backend/src/orders.service';
@@ -11,7 +12,7 @@ type Checkout = { id: string; token: string; customerName: string; phone: string
 const KEY = 'bakery-cart-v1';
 export const money = (kopecks: number) => `${(kopecks / 100).toLocaleString('uk-UA', { maximumFractionDigits: 2 })} ₴`;
 const labels: Record<string, string> = { new: 'Нове', preparing: 'Готуємо', ready: 'Готове до отримання', completed: 'Виконано', cancelled: 'Скасовано' };
-export function useCart() {
+export function useCart(maxQuantity = 99) {
   const [lines, setLines] = useState<Line[]>([]);
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [pending, setPending] = useState<Checkout | null>(null);
@@ -23,14 +24,14 @@ export function useCart() {
       try {
         const saved = JSON.parse(localStorage.getItem(KEY) ?? '{}');
         if (!active) return;
-        if (Array.isArray(saved.lines)) setLines(saved.lines.filter((line: Line) => typeof line?.id === 'string' && Number.isInteger(line.quantity) && line.quantity > 0 && line.quantity <= 99).slice(0, 50));
+        if (Array.isArray(saved.lines)) setLines(saved.lines.filter((line: Line) => typeof line?.id === 'string' && Number.isInteger(line.quantity) && line.quantity > 0 && line.quantity <= 9999).slice(0, 50).map((line: Line) => ({ ...line, quantity: Math.min(maxQuantity, line.quantity) })));
         if (Array.isArray(saved.receipts)) setReceipts(saved.receipts.filter((r: Receipt) => r?.order?.id && typeof r.token === 'string').slice(0, 10));
         if (saved.pending?.id && saved.pending?.token && Array.isArray(saved.pending.items)) setPending(saved.pending);
       } catch { if (active) setStorageError('Дозвольте збереження даних у браузері, щоб оформити та скасувати замовлення.'); }
       if (active) setReady(true);
     });
     return () => { active = false; };
-  }, []);
+  }, [maxQuantity]);
   function save(nextLines = lines, nextReceipts = receipts, nextPending = pending) {
     try {
       localStorage.setItem(KEY, JSON.stringify({ lines: nextLines, receipts: nextReceipts, pending: nextPending }));
@@ -40,9 +41,9 @@ export function useCart() {
   }
   function quantity(id: string, amount: number) {
     if (pending || !ready) return;
-    save(amount <= 0 ? lines.filter(line => line.id !== id) : lines.some(line => line.id === id) ? lines.map(line => line.id === id ? { id, quantity: Math.min(99, amount) } : line) : [...lines, { id, quantity: Math.min(99, amount) }].slice(0, 50));
+    save(amount <= 0 ? lines.filter(line => line.id !== id) : lines.some(line => line.id === id) ? lines.map(line => line.id === id ? { id, quantity: Math.min(maxQuantity, amount) } : line) : [...lines, { id, quantity: Math.min(maxQuantity, amount) }].slice(0, 50));
   }
-  return { lines, receipts, pending, ready, storageError, save, quantity, count: lines.reduce((sum, line) => sum + line.quantity, 0) };
+  return { lines, receipts, pending, ready, maxQuantity, storageError, save, quantity, count: lines.reduce((sum, line) => sum + line.quantity, 0) };
 }
 
 async function request(path: string, method: string, token?: string, body?: Checkout): Promise<Order> {
@@ -95,7 +96,7 @@ export default function Cart({ cart, products, bakery, open, onClose }: { cart: 
     <div className={styles.heading}><h2 id="cart-title">Ваш кошик</h2><button type="button" onClick={onClose} aria-label="Закрити кошик">×</button></div>
     <p role="alert">{error || cart.storageError}</p><p role="status">{notice}</p>
     {lines.length === 0 ? <p>Кошик поки порожній. Оберіть щось смачне у вітрині.</p> : <>
-      <ul className={styles.lines}>{lines.map(line => <li key={line.id}><div><strong>{line.product?.name ?? 'Товар видалено'}</strong><small>{line.product?.price != null && money(Math.round(line.product.price * 100))}{(!line.product || line.product.available === false) && ' · Немає в наявності'}</small></div><div className={styles.quantity}><button disabled={busy || !!cart.pending} onClick={() => cart.quantity(line.id, line.quantity - 1)} aria-label={`Зменшити кількість: ${line.product?.name}`}>−</button><span>{line.quantity}</span><button disabled={busy || !!cart.pending || line.quantity >= 99} onClick={() => cart.quantity(line.id, line.quantity + 1)} aria-label={`Збільшити кількість: ${line.product?.name}`}>+</button></div><strong>{money(Math.round((line.product?.price ?? 0) * 100) * line.quantity)}</strong><button disabled={busy || !!cart.pending} onClick={() => cart.quantity(line.id, 0)} aria-label={`Видалити: ${line.product?.name}`}>×</button></li>)}</ul>
+      <ul className={styles.lines}>{lines.map(line => <li key={line.id}><div><strong>{line.product?.name ?? 'Товар видалено'}</strong><small>{line.product?.price != null && money(Math.round(line.product.price * 100))}{(!line.product || line.product.available === false) && ' · Немає в наявності'}</small></div><div className={styles.quantity}><button disabled={busy || !!cart.pending} onClick={() => cart.quantity(line.id, line.quantity - 1)} aria-label={`Зменшити кількість: ${line.product?.name}`}>−</button><QuantityInput value={line.quantity} digits={String(cart.maxQuantity).length} disabled={busy || !!cart.pending} label={`Кількість: ${line.product?.name}`} className={styles.quantityInput} onChange={amount => cart.quantity(line.id, amount)} /><button disabled={busy || !!cart.pending || line.quantity >= cart.maxQuantity} onClick={() => cart.quantity(line.id, line.quantity + 1)} aria-label={`Збільшити кількість: ${line.product?.name}`}>+</button></div><strong>{money(Math.round((line.product?.price ?? 0) * 100) * line.quantity)}</strong><button disabled={busy || !!cart.pending} onClick={() => cart.quantity(line.id, 0)} aria-label={`Видалити: ${line.product?.name}`}>×</button></li>)}</ul>
       <p className={styles.total}>Разом <strong>{money(total)}</strong></p>
       <form onSubmit={event => { event.preventDefault(); void checkout(); }}>
         <label>Ваше ім’я<input name="customerName" autoComplete="given-name" required={!cart.pending} maxLength={80} disabled={busy || !!cart.pending} value={name} onChange={event => setName(event.target.value)} /></label>
