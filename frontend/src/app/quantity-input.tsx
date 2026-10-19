@@ -3,7 +3,7 @@ import { useState } from 'react';
 
 export default function QuantityInput({ value, digits, disabled, label, className, onChange }: { value: number; digits: number; disabled: boolean; label: string; className?: string; onChange: (value: number) => void }) {
   const [draft, setDraft] = useState<string | null>(null);
-  return <input type="text" inputMode="numeric" pattern="[0-9]*" maxLength={digits} autoComplete="off" aria-label={label} disabled={disabled} className={className} style={{ width: `${digits + 1}ch` }} value={draft ?? String(value)} onFocus={event => { setDraft(String(value)); event.currentTarget.select(); }} onChange={event => {
+  return <input type="text" inputMode="numeric" pattern="[0-9]*" maxLength={digits} autoComplete="off" aria-label={label} disabled={disabled} className={className} style={{ width: `calc(${digits + 1}ch + 16px)` }} value={draft ?? String(value)} onFocus={event => { setDraft(String(value)); event.currentTarget.select(); }} onChange={event => {
     const text = event.target.value;
     if (!/^\d*$/.test(text) || text.length > digits) return;
     setDraft(text);
