@@ -21,7 +21,7 @@ Configure these in the Vercel project before deployment (server-side only; no `N
 | `PUBLIC_SITE_URL` | Exact production origin, e.g. `https://your-project.vercel.app`, without trailing slash |
 | `TELEGRAM_USER_BOT_TOKEN` | Visitor bot token |
 | `TELEGRAM_ADMIN_BOT_TOKEN` | Administrator bot token |
-| `TELEGRAM_ADMIN_IDS` | `470334534,5711475783` |
+| Telegram roles | Fixed owners `470334534,5711475783`; delegates managed with `/addadmin ID` in the admin bot |
 | `TELEGRAM_USER_WEBHOOK_SECRET` | Independent random 32–256 character secret, letters/digits/underscore/hyphen |
 | `TELEGRAM_ADMIN_WEBHOOK_SECRET` | Another independent secret with the same requirements |
 | `CRON_SECRET` | Independent random secret, at least 32 characters |
@@ -37,12 +37,12 @@ Use production tokens only in the Production environment. Preview builds must ne
 1. Run `npm ci`, `npm ci --prefix frontend`, and `npm ci --prefix backend` from a normal Node.js installation. The checked-in `npm.cmd` is a local workspace helper; it is not needed on Vercel.
 2. Run `npm --prefix backend run build`, then `npm run db:migrate` against the existing Neon database. Migrations preserve catalogue/contact data. Migration `005_serverless_runtime.sql` adds shared admin sessions, login throttling and webhook update IDs. Do not recreate or reseed the live catalogue.
 3. Import the private GitHub repository into Vercel with Root Directory `.`. Add variables and deploy. Services is beta and may need enabling on the account.
-4. Check `/`, `/admin`, `/api/catalog` and `/api/database`. Test login, catalogue edits, availability and analytics. Sessions are stored in Neon and survive new function instances. Changing the admin password or session secret invalidates existing sessions.
+4. Check `/`, `/admin` and `/api/catalog`; `/api/database` and `/database` must return 404 in production. Test login, catalogue edits, availability and analytics. Sessions are stored in Neon and survive new function instances. Changing the admin password or session secret invalidates existing sessions.
 5. Set the final `PUBLIC_SITE_URL` and redeploy if the hostname changed. Set the same site URL, bot tokens and webhook secrets in your ignored local env file for the next command.
 6. Stop the local polling server, then run `npm run telegram:webhooks -- --set`. This changes both bots to the production webhook endpoints and preserves queued updates. **Do not run this until the public deployment is working.**
 7. Run `npm run telegram:webhooks -- --check`. Test `/start`, `/contacts`, `/support`, both admins' reply buttons and the shared answered status in Telegram. This final live check needs the deployed domain.
 
-The daily Vercel cron retries pending support deliveries and cleans expired runtime records. Pending delivery/status notifications are also retried on incoming webhook traffic. A blocked administrator is retried when they unblock/start the bot. There is no permanent background process on Vercel.
+The daily Vercel cron retries pending support deliveries and cleans expired runtime records. Pending deliveries are also retried on support intake and admin `/start`; ordinary visitor commands do not trigger a global delivery fan-out. Support history expires after 90 days. A blocked administrator is retried when they unblock/start the bot. There is no permanent background process on Vercel.
 
 Webhook requests require the Telegram secret header. Updates are serialized per bot/chat and successful update IDs are persisted, including across cold starts. As with any external messaging API, a crash between sending a Telegram message and recording the result can still result in a retry; this is not an exactly-once delivery guarantee.
 
@@ -66,7 +66,7 @@ Run `npm run telegram:webhooks -- --delete`, remove `TELEGRAM_MODE=webhook` loca
 ### Наявність, графік і сповіщення
 - На вітрині доступний фільтр «Тільки в наявності»; пошук і категорії працюють разом із ним.
 - Графік редагується в «Контакти й адреса» окремо для кожного дня, часовий пояс Europe/Kyiv. До налаштування графік і статус не відображаються. Зачинення наступного дня підтримується.
-- Помилка синхронізації Poster надсилається кожному TELEGRAM_ADMIN_IDS через адмін-бота; повторення не частіше ніж раз на 6 годин для кожного адміністратора. Успішна синхронізація скидає обмеження для наступного інциденту. Недоставлені сповіщення повторюються при наступній невдалій синхронізації. Текст не містить ключів або відповідей API.
+- Помилка синхронізації Poster надсилається кожному адміністратору з актуального списку ролей через адмін-бота; повторення не частіше ніж раз на 6 годин для кожного адміністратора. Успішна синхронізація скидає обмеження для наступного інциденту. Недоставлені сповіщення повторюються при наступній невдалій синхронізації. Текст не містить ключів або відповідей API.
 - Перед деплоєм застосуйте міграцію 008_poster_alerts.sql через npm run db:migrate.
 
 Admin bot service/command messages and Poster alerts use disable_notification=true. Only forwarded visitor support tickets explicitly use disable_notification=false, including every chunk of long messages.
@@ -79,3 +79,9 @@ Admin bot service/command messages and Poster alerts use disable_notification=tr
 ### Опис і склад вітрини · 2026-10-18
 Операція operations/2026-10-18-catalog-details.json містить описи 141 товару й попередні значення трьох полів для відновлення. У 20 товарів склад узято з техкарт Poster з розкриттям вкладених напівфабрикатів. У 121 товару без техкарти склад і алергени залишено на уточнення; типові інтернет-рецепти не підставлялися. Класифікація алергенів за назвами складників не підтверджує повне маркування сумішей чи відсутність перехресного контакту.
 Застосування: node backend/scripts/apply-catalog-details.mjs operations/2026-10-18-catalog-details.json. Відновлення попередніх текстів: та сама команда з --revert. Скрипт перевіряє конкурентні зміни та змінює лише description, ingredients, allergens, зберігаючи резервну копію в ігнорованій директорії artifacts/poster.
+
+### Security migration 013
+
+Apply `013_security_and_telegram_admins.sql` before this version. It adds persistent request quotas, delegated Telegram admins, and short-lived webhook leases. Keep the same server-only `ADMIN_SESSION_SECRET` in both Vercel services: client identities are signed between frontend and backend. Do not expose it as NEXT_PUBLIC_. `/addadmin ID`, `/removeadmin ID`, and `/admins` are available only to the two immutable owners. Added admins cannot manage roles.
+
+Run `npm run verify:security` without cloud credentials for fully isolated PostgreSQL/WASM integration checks. See README for rate limits, retention, and the scoped lint dependency override.

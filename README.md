@@ -31,13 +31,13 @@ to the corresponding website section. The bot keeps contacts and support.
 Visitor `/support` or **💬 Зв’язатися** waits up to 30 minutes for one text message;
 `/cancel` cancels it, and successful submission automatically exits support mode.
 The message is saved in Neon and delivered through the
-admin bot to every ID in `TELEGRAM_ADMIN_IDS`, with a **Відповісти** inline button.
+admin bot to both owners and the delegates saved in `bakery_telegram_admins`, with a **Відповісти** inline button.
 An authorized administrator presses that button and replies to the bot's ForceReply
 prompt. The reply returns to the visitor through the visitor bot. Reply prompts are
 scoped to the administrator and expire after 24 hours; `/cancel` invalidates that admin's
 outstanding prompts. Each administrator must first press **Start** in the admin bot:
 Telegram cannot initiate a chat with somebody who has never started it or has blocked it.
-Pending deliveries remain in Neon and are retried by local polling, webhook traffic,
+Pending deliveries remain in Neon and are retried by local polling, support intake, admin `/start`,
 and the protected Vercel cron. Successful replies close the admin's reply mode and
 mark the original message as answered for both administrators.
 Correspondence and routing survive application restarts. Text messages are supported;
@@ -68,7 +68,6 @@ Root `.env` contains these placeholders (also documented in `.env.example`):
 
     TELEGRAM_USER_BOT_TOKEN=
     TELEGRAM_ADMIN_BOT_TOKEN=
-    TELEGRAM_ADMIN_IDS=470334534,5711475783
     PUBLIC_SITE_URL=http://localhost:3000
 
 Create two distinct bots with Telegram BotFather and paste their tokens into those keys.
@@ -93,6 +92,36 @@ Checks with both servers running:
 
     .\npm.cmd run verify:admin
     node scripts/verify-bakery.mjs
+
+### Security and administrator roles
+
+Only Telegram owners `470334534` and `5711475783` can use `/addadmin ID`,
+`/removeadmin ID`, and `/admins` in the admin bot. Added administrators can use
+normal admin commands and answer support, but cannot manage roles. Their access
+is stored in Neon, not environment variables. Revocation also removes pending
+delivery/reply permissions. New administrators must first send `/start` to the bot.
+
+Apply migration `013_security_and_telegram_admins.sql` before publishing this version.
+On Vercel, both services need the same server-only `ADMIN_SESSION_SECRET` (at least
+32 characters). The frontend signs Vercel's overwritten client IP using a scoped
+HMAC; the backend rejects unsigned, stale or route-mismatched identities instead
+of grouping all logins under the proxy IP. Do not enable trusted external proxy
+IP overrides without reviewing this boundary. Local requests use the socket IP.
+
+Analytics has per-client and global persistent quotas. This limits abuse but does
+not turn anonymous browser telemetry into a verified human count. Telegram visitor
+commands are limited to 20/minute and 200/day; support intake allows 5 messages per
+10 minutes and 20 per rolling day per user, and 1,000/day globally. Over-quota
+support messages are not forwarded. Protected daily maintenance deletes support
+and associated routing/replies after 90 days and removes expired rate-limit rows.
+The database diagnostic page and API return 404 in production.
+
+Run `npm run verify:security` for PostgreSQL/WASM integration checks entirely in
+memory, without database credentials or real Telegram traffic. This exercises
+migrations, quota concurrency, delegated roles/revocation, support, retention and
+webhook leases. `npm --prefix backend test` covers signed proxy identities and
+HTTP authorization. The unused Nest deployment CLI was removed; the Next lint
+plugin uses a scoped tinyglobby override to avoid the unpatched braces dependency.
 
 `verify:admin` creates and removes a dedicated test product and briefly changes then
 restores the contact email to prove persistence and public rendering. Bot commands,

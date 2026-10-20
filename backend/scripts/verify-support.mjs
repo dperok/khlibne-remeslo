@@ -15,7 +15,7 @@ process.env.TELEGRAM_ADMIN_BOT_TOKEN = 'test-admin';
 const userId = 9000000000000 + randomInt(1000000);
 const db = new DatabaseService();
 const content = new ContentService(db);
-const commands = new BotCommandsService(content);
+const commands = new BotCommandsService(content, { ids: async () => [910000001,910000002], has: async id => [910000001,910000002].includes(id) });
 let sequence = 100;
 const requests = [];
 const call = async (token, method, body) => {

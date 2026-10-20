@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, Injectable } from '@nestjs/common';
 import { ContentService } from './content.service.js';
 import { receivesServiceNotifications } from './admin-notifications.js';
 import { BotCommandsService } from './bot-commands.service.js';
@@ -20,7 +20,7 @@ export class BotInteractionsService {
     if (!token) throw new Error('Bot not configured');
     return token;
   }
-  private admins() { return [...new Set((process.env.TELEGRAM_ADMIN_IDS ?? '470334534,5711475783').split(',').map(Number).filter((id) => Number.isSafeInteger(id) && id > 0))]; }
+  private admins() { return this.commands.adminIds(); }
   private async say(role: BotRole, chat: number | string, text: string, call: TelegramCall, extra: Record<string, unknown> = {}) {
     return call<{ message_id: number }>(this.token(role), 'sendMessage', { chat_id: chat, text, ...(role === 'admin' ? { disable_notification: true } : {}), link_preview_options: { is_disabled: true }, ...extra });
   }
@@ -32,7 +32,7 @@ export class BotInteractionsService {
     return work;
   }
   async retryDeliveries(call: TelegramCall) {
-    await Promise.all(this.admins().map((admin) => this.deliver(admin, call)));
+    await Promise.all((await this.admins()).map((admin) => this.deliver(admin, call)));
     await this.syncReplyStatuses(call);
   }
   private async syncReplyStatuses(call: TelegramCall) {
@@ -42,8 +42,9 @@ export class BotInteractionsService {
     return work;
   }
   private async notifyReplyStatuses(call: TelegramCall) {
+    const admins = await this.admins();
     for (const status of await this.store.pendingReplyStatuses()) {
-      if (!this.admins().includes(Number(status.admin_id))) continue;
+      if (!admins.includes(Number(status.admin_id))) continue;
       try {
         await call(this.token('admin'), 'editMessageReplyMarkup', {
           chat_id: status.admin_id, message_id: Number(status.message_id),
@@ -59,6 +60,7 @@ export class BotInteractionsService {
   }
   private async deliverPending(admin: number, call: TelegramCall) {
     for (const ticket of await this.store.pending(admin)) {
+      if (!(await this.admins()).includes(admin)) return;
       const text = `Нове звернення №${ticket.id.slice(0,8)}\nВід: ${ticket.sender_name}\n\n${ticket.message_text}`;
       let lastId = 0;
       try {
@@ -74,7 +76,7 @@ export class BotInteractionsService {
   }
   async callback(callback: BotCallback, call: TelegramCall) {
     const message = callback.message;
-    if (!message || !this.commands.isAdmin({ ...message, from: callback.from })) return;
+    if (!message || !await this.commands.isAdmin({ ...message, from: callback.from })) return;
     const confirmation = /^(confirm|discard):([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i.exec(callback.data ?? '');
     if (confirmation && message.message_id) {
       await call(this.token('admin'), 'answerCallbackQuery', { callback_query_id: callback.id });
@@ -158,7 +160,7 @@ export class BotInteractionsService {
     const input = message.text?.trim() ?? '';
     const command = input.split(/\s+/)[0].split('@')[0].toLowerCase();
     if (role === 'admin') {
-      if (!this.commands.isAdmin(message)) return true;
+      if (!await this.commands.isAdmin(message)) return true;
       if (command === '/cancel') { await this.store.cancelPrompts(message.chat.id); await this.say('admin', message.chat.id, 'Відповідь скасовано. Щоб відповісти, знову натисніть «Відповісти» під зверненням.', call); return true; }
       if (command === '/start') { await this.deliver(message.chat.id, call); return false; }
       if (message.reply_to_message && !command.startsWith('/')) {
@@ -186,10 +188,16 @@ export class BotInteractionsService {
     const replyingToAdmin = !inSupport && await this.isReplyToAdmin(message, call);
     if (!inSupport && !replyingToAdmin) return false;
     if (!message.text || !message.message_id) { await this.say('user', message.chat.id, 'Поки що надішліть звернення текстом, будь ласка.', call); return true; }
-    const admins = this.admins();
+    const admins = await this.admins();
     if (!admins.length || !process.env.TELEGRAM_ADMIN_BOT_TOKEN?.trim()) { await this.say('user', message.chat.id, 'Зв’язок із командою тимчасово недоступний. Спробуйте пізніше.', call); return true; }
     const name = `${message.from.first_name ?? 'Відвідувач'}${message.from.username ? ` (@${message.from.username})` : ''}`.slice(0, 160);
-    const ticket = await this.store.create(message.chat.id, message.message_id, name, message.text, admins);
+    let ticket: Ticket;
+    try { ticket = await this.store.create(message.chat.id, message.message_id, name, message.text, admins); }
+    catch (error) {
+      if (!(error instanceof HttpException) || error.getStatus() !== 429) throw error;
+      await this.say('user', message.chat.id, 'Забагато звернень. Спробуйте пізніше або зателефонуйте до пекарні: /contacts.', call);
+      return true;
+    }
     await this.store.setMode(message.chat.id, false);
     await Promise.all(admins.map((admin) => this.deliver(admin, call)));
     const delivered = await this.store.countDelivered(ticket.id);

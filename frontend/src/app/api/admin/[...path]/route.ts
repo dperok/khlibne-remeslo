@@ -1,4 +1,5 @@
 import { backendUrl } from '../../../backend-url';
+import { clientHeaders, limitedBody } from '../../../proxy-security';
 type Context = { params: Promise<{ path: string[] }> };
 
 async function proxy(request: Request, context: Context) {
@@ -10,12 +11,12 @@ async function proxy(request: Request, context: Context) {
     const expected = process.env.PUBLIC_SITE_URL ?? new URL(request.url).origin;
     if (!origin || origin !== expected) return Response.json({ message: 'Недозволене джерело запиту' }, { status: 403 });
   }
-  const body = ['GET', 'HEAD'].includes(request.method) ? undefined : await request.text();
-  if (body && body.length > 30000) return Response.json({ message: 'Завеликий запит' }, { status: 413 });
+  const body = ['GET', 'HEAD'].includes(request.method) ? undefined : await limitedBody(request, 30000);
+  if (body === null) return Response.json({ message: 'Завеликий запит' }, { status: 413 });
   try {
     const response = await fetch(backendUrl(`/admin/${route}`), {
       method: request.method, body, cache: 'no-store', signal: AbortSignal.timeout(route === 'poster/sync' ? 45000 : 15000),
-      headers: { 'Content-Type': 'application/json', Cookie: request.headers.get('cookie') ?? '', Origin: request.headers.get('origin') ?? '' },
+      headers: { ...clientHeaders(request, `/admin/${route}`), 'Content-Type': 'application/json', Cookie: request.headers.get('cookie') ?? '', Origin: request.headers.get('origin') ?? '' },
     });
     const headers = new Headers({ 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
     const cookie = response.headers.get('set-cookie');

@@ -3,6 +3,7 @@ import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from
 import type { Request, Response } from 'express';
 import type { PoolClient } from 'pg';
 import { DatabaseService } from './database.service.js';
+import { clientIdentity } from './client-identity.js';
 
 const COOKIE = 'bakery_admin';
 const SESSION_MS = 8 * 60 * 60 * 1000;
@@ -44,8 +45,9 @@ export class AdminAuthService {
   }
   async login(req: Request, res: Response, body: { password?: unknown }) {
     this.checkOrigin(req);
+    const identity = clientIdentity(req);
     if (this.db) return this.db.transaction(async (client) => {
-      const ip = this.digest(req.ip ?? 'unknown');
+      const ip = this.digest(identity);
       await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`admin-login:${ip}`]);
       const outcome = await this.databaseLogin(req, res, body, client, ip);
       return outcome;
@@ -53,7 +55,7 @@ export class AdminAuthService {
     const now = Date.now();
     for (const [key, expires] of this.sessions) if (expires <= now) this.sessions.delete(key);
     for (const [key, failure] of this.failures) if (failure.reset <= now) this.failures.delete(key);
-    const ip = req.ip ?? 'unknown';
+    const ip = identity;
     const failure = this.failures.get(ip);
     if (failure && failure.count >= 5) throw new HttpException('Забагато спроб. Повторіть через 15 хвилин.', 429);
     const candidate = typeof body?.password === 'string' && body.password.length <= 128 ? body.password : '';

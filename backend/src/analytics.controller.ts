@@ -2,6 +2,7 @@ import { Body, Controller, Post, Req } from '@nestjs/common';
 import type { Request } from 'express';
 import { AnalyticsService } from './analytics.service.js';
 import { AdminAuthService } from './admin-auth.service.js';
+import { clientIdentity } from './client-identity.js';
 
 @Controller('analytics')
 export class AnalyticsController {
@@ -9,6 +10,6 @@ export class AnalyticsController {
   @Post('visit')
   record(@Req() request: Request, @Body() body: Parameters<AnalyticsService['record']>[0]) {
     this.auth.checkOrigin(request);
-    return this.analytics.record(body);
+    return this.analytics.record(body, clientIdentity(request));
   }
 }

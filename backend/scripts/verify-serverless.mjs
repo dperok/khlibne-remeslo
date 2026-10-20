@@ -49,8 +49,8 @@ try {
   console.log('PASS shared admin sessions: cold-instance login, logout revocation and persistent login throttling');
 
   const content = new ContentService(db);
-  const interactions = new BotInteractionsService(new SupportRepository(db), new BotCommandsService(content), content);
-  function instance() { return new TelegramService(new BotCommandsService(content), interactions); }
+  const interactions = new BotInteractionsService(new SupportRepository(db), new BotCommandsService(content, { ids: async () => [910000001,910000002], has: async id => [910000001,910000002].includes(id) }), content);
+  function instance() { return new TelegramService(new BotCommandsService(content, { ids: async () => [910000001,910000002], has: async id => [910000001,910000002].includes(id) }), interactions); }
   const transport = instance(); transport.onModuleInit();
   assert.equal(transport.status().user, 'webhook'); assert.equal(telegramCalls.length, 0);
   const open = { update_id: user, message: { message_id: 1, from: { id: user }, chat: { id: user, type: 'private' }, text: '/support' } };

@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import { DatabaseService } from './database.service.js';
+import { RateLimitService } from './rate-limit.service.js';
 
 export function kyivDay(date = new Date()) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Kyiv', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
@@ -11,14 +12,17 @@ export type AnalyticsDay = { day: string; visitors: number; sessions: number; av
 @Injectable()
 export class AnalyticsService {
   private cleanedDay = '';
-  constructor(private readonly database: DatabaseService) {}
-  async record(body: { visitorId?: unknown; sessionId?: unknown; activeMs?: unknown; day?: unknown }) {
+  constructor(private readonly database: DatabaseService, private readonly limits: RateLimitService) {}
+  async record(body: { visitorId?: unknown; sessionId?: unknown; activeMs?: unknown; day?: unknown }, client: string) {
     const today = kyivDay();
     const yesterday = new Date(new Date(`${today}T00:00:00Z`).getTime() - 86400000).toISOString().slice(0, 10);
     if (!body || typeof body.visitorId !== 'string' || !uuid.test(body.visitorId) || typeof body.sessionId !== 'string' || !uuid.test(body.sessionId) ||
       typeof body.activeMs !== 'number' || !Number.isSafeInteger(body.activeMs) || body.activeMs < 0 || body.activeMs > 86400000 ||
       (body.day !== today && body.day !== yesterday)) throw new BadRequestException('Некоректна подія відвідування');
     const visitorHash = createHash('sha256').update(body.visitorId).digest('hex');
+    await this.limits.consume('analytics-minute', client, 120, 60);
+    await this.limits.consume('analytics-day', client, 6000, 86400);
+    await this.limits.consume('analytics-global-day', 'all', 100000, 86400);
     await this.database.query(`INSERT INTO bakery_site_visits(day, session_id, visitor_hash, active_ms)
       VALUES ($1::date, $2::uuid, $3, LEAST($4::int, 15000))
       ON CONFLICT(day, session_id) DO UPDATE SET

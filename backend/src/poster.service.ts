@@ -1,6 +1,7 @@
-import { ConflictException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, Optional, ServiceUnavailableException } from '@nestjs/common';
 import { DatabaseService } from './database.service.js';
 import { receivesServiceNotifications } from './admin-notifications.js';
+import { TelegramAdminsService, OWNER_IDS } from './telegram-admins.service.js';
 import type { Content, Product } from './content.service.js';
 
 type MenuItem = { product_id: string; ingredient_id?: string };
@@ -45,10 +46,10 @@ export function posterAvailability(products: Product[], menu: MenuItem[], stocks
 @Injectable()
 export class PosterService {
   private readonly logger = new Logger(PosterService.name);
-  constructor(private readonly db: DatabaseService) {}
+  constructor(private readonly db: DatabaseService, @Optional() private readonly admins?: TelegramAdminsService) {}
   async notifyFailure() {
     const token = process.env.TELEGRAM_ADMIN_BOT_TOKEN?.trim();
-    const admins = [...new Set((process.env.TELEGRAM_ADMIN_IDS ?? '').split(',').map(id => id.trim()).filter(id => /^\d+$/.test(id) && receivesServiceNotifications(id)))];
+    const admins = (this.admins ? await this.admins.ids() : [...OWNER_IDS]).filter(receivesServiceNotifications).map(String);
     if (!token || !admins.length) { this.logger.warn('Poster failure alert: admin bot is not configured'); return; }
     await Promise.allSettled(admins.map(async admin => {
       // Persistent per-recipient claim prevents duplicate alerts across serverless instances.

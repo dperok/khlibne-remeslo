@@ -12,6 +12,7 @@ describe('Telegram webhook HTTP boundary', () => {
   const completed = new Set<string>();
   const query = vi.fn(async (sql: string, args: unknown[] = []) => {
     const key = args.join(':');
+    if (sql.startsWith('INSERT INTO bakery_telegram_leases')) return { rowCount: 1 };
     if (sql.startsWith('SELECT 1')) return { rowCount: completed.has(key) ? 1 : 0 };
     if (sql.startsWith('INSERT')) completed.add(key);
     return { rowCount: 0 };

@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "verify:security": "npm --prefix backend run build && node backend/scripts/verify-security.mjs",
     "telegram:webhooks": "node backend/scripts/configure-telegram.mjs",
     "verify:serverless": "node backend/scripts/verify-serverless.mjs",
     "dev:frontend": "npm --prefix frontend run dev",

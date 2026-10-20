@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, HttpException, Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { DatabaseService } from './database.service.js';
 
@@ -35,12 +35,28 @@ export class SupportRepository {
   }
   async inMode(userId: number) { return (await this.db.query('SELECT 1 FROM bakery_support_modes WHERE user_id = $1 AND expires_at > now()', [userId])).rowCount! > 0; }
   async create(userId: number, messageId: number, name: string, text: string, admins: number[]) {
+    if (!text.trim() || text.length > 4096) throw new BadRequestException('Некоректне звернення.');
     return this.db.transaction(async (client) => {
+      await client.query("SELECT pg_advisory_xact_lock(hashtext('support-intake'))");
+      const existing = await client.query<Ticket>('SELECT * FROM bakery_support_messages WHERE user_id=$1 AND source_message_id=$2', [userId, messageId]);
+      if (existing.rows[0]) return existing.rows[0];
+      const quota = await client.query<{ recent: number; daily: number; total: number }>(`SELECT
+        count(*) FILTER (WHERE user_id=$1 AND created_at>now()-interval '10 minutes')::int AS recent,
+        count(*) FILTER (WHERE user_id=$1)::int AS daily,count(*)::int AS total
+        FROM bakery_support_messages WHERE created_at>now()-interval '24 hours'`, [userId]);
+      const count = quota.rows[0];
+      if (count.recent >= 5 || count.daily >= 20 || count.total >= 1000) throw new HttpException('Забагато звернень.', 429);
       const result = await client.query<Ticket>('INSERT INTO bakery_support_messages(id, user_id, source_message_id, sender_name, message_text) VALUES ($1,$2,$3,$4,$5) ON CONFLICT(user_id,source_message_id) DO UPDATE SET user_id = EXCLUDED.user_id RETURNING *', [randomUUID(), userId, messageId, name, text]);
       const ticket = result.rows[0];
       for (const admin of admins) await client.query('INSERT INTO bakery_support_deliveries(ticket_id, admin_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [ticket.id, admin]);
       return ticket;
     });
+  }
+  async cleanup() {
+    await this.db.query("DELETE FROM bakery_support_messages WHERE created_at < now()-interval '90 days'");
+    await this.db.query('DELETE FROM bakery_support_modes WHERE expires_at < now()');
+    await this.db.query("DELETE FROM bakery_support_prompts WHERE created_at < now()-interval '24 hours'");
+    await this.db.query("DELETE FROM bakery_support_reply_confirmations WHERE created_at < now()-interval '24 hours'");
   }
   async pending(admin: number) { return (await this.db.query<Ticket>('SELECT m.* FROM bakery_support_messages m JOIN bakery_support_deliveries d ON d.ticket_id=m.id WHERE d.admin_id=$1 AND d.message_id IS NULL ORDER BY m.created_at LIMIT 30', [admin])).rows; }
   async delivered(ticket: string, admin: number, messageId: number) { await this.db.query('UPDATE bakery_support_deliveries SET message_id=$3 WHERE ticket_id=$1 AND admin_id=$2', [ticket, admin, messageId]); }

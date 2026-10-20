@@ -1,8 +1,9 @@
-import { Injectable, Logger, OnModuleInit, OnApplicationShutdown } from '@nestjs/common';
+import { HttpException, Injectable, Logger, OnModuleInit, OnApplicationShutdown, Optional } from '@nestjs/common';
 import { BotCommandsService } from './bot-commands.service.js';
 import type { BotMessage, BotRole } from './bot-commands.service.js';
 import { BotInteractionsService } from './bot-interactions.service.js';
 import type { BotCallback } from './bot-interactions.service.js';
+import { RateLimitService } from './rate-limit.service.js';
 
 export type Update = { update_id: number; message?: BotMessage; callback_query?: BotCallback };
 @Injectable()
@@ -11,7 +12,18 @@ export class TelegramService implements OnModuleInit, OnApplicationShutdown {
   private readonly abort = new AbortController();
   private readonly states: Record<BotRole, string> = { user: 'disabled', admin: 'disabled' };
   private readonly tasks: Promise<void>[] = [];
-  constructor(private readonly commands: BotCommandsService, private readonly interactions: BotInteractionsService) {}
+  constructor(private readonly commands: BotCommandsService, private readonly interactions: BotInteractionsService, @Optional() private readonly limits?: RateLimitService) {}
+  private async accept(role: BotRole, update: Update) {
+    if (role === 'admin') return true;
+    const id = update.message?.from?.id ?? update.callback_query?.from?.id;
+    if (!id || !Number.isSafeInteger(id) || id <= 0) return false;
+    if (!this.limits) return true;
+    try {
+      await this.limits.consume('telegram-minute', String(id), 20, 60);
+      await this.limits.consume('telegram-day', String(id), 200, 86400);
+      return true;
+    } catch (error) { if (error instanceof HttpException && error.getStatus() === 429) return false; throw error; }
+  }
 
   status() { return { ...this.states }; }
   onModuleInit() {
@@ -37,6 +49,7 @@ export class TelegramService implements OnModuleInit, OnApplicationShutdown {
   async handleUpdate(role: BotRole, update: Update) {
     const token = process.env[role === 'user' ? 'TELEGRAM_USER_BOT_TOKEN' : 'TELEGRAM_ADMIN_BOT_TOKEN']?.trim();
     if (!token || this.states[role] === 'duplicate_tokens') throw new Error('Bot not configured');
+    if (!await this.accept(role, update)) return;
     if (update.callback_query) {
       if (role === 'admin') await this.interactions.callback(update.callback_query, this.call.bind(this));
       else await this.interactions.catalogCallback(update.callback_query, this.call.bind(this));
@@ -51,7 +64,8 @@ export class TelegramService implements OnModuleInit, OnApplicationShutdown {
         } catch (error) { if ((error as { code?: number }).code !== 403) throw error; }
       }
     }
-    await this.retryDeliveries();
+    // Support intake and admin /start deliver their own pending tickets. Ordinary
+    // visitor commands must not trigger a global fan-out to every administrator.
   }
   async retryDeliveries() { await this.interactions.retryDeliveries(this.call.bind(this)); }
   private delay(ms: number) {
@@ -77,6 +91,7 @@ export class TelegramService implements OnModuleInit, OnApplicationShutdown {
         this.states[role] = 'running';
         const updates = await this.call<Update[]>(token, 'getUpdates', { offset, timeout: 25, allowed_updates: ['message', 'callback_query'] });
         for (const update of updates) {
+          if (!await this.accept(role, update)) { offset = update.update_id + 1; continue; }
           if (update.callback_query && !this.abort.signal.aborted) {
             try {
               if (role === 'admin') await this.interactions.callback(update.callback_query, this.call.bind(this));

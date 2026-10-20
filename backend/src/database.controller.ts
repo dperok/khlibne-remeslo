@@ -1,4 +1,4 @@
-import { Controller, Get, Header, Query } from '@nestjs/common';
+import { Controller, Get, Header, Query, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { DatabaseService } from './database.service.js';
 
@@ -9,6 +9,7 @@ export class DatabaseController {
   @Get('status')
   @Header('Cache-Control', 'no-store')
   status(@Query('probe') probe?: string) {
+    if (process.env.NODE_ENV === 'production' || process.env.VERCEL) throw new NotFoundException();
     return this.database.status((probe ?? randomUUID()).slice(0, 128));
   }
 }

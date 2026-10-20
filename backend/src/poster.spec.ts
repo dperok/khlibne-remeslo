@@ -64,11 +64,11 @@ describe('Poster stock sync', () => {
     expect(query.mock.calls).toHaveLength(1);
     expect(JSON.stringify(vi.mocked(db.query).mock.calls)).not.toContain('private-test-key');
   });
-  it('requires the cron secret before accessing Poster', () => {
+  it('requires the cron secret before accessing Poster', async () => {
     vi.stubEnv('CRON_SECRET', 'cron-key'); const sync = vi.fn();
     const controller = new PosterController({ sync } as unknown as PosterService);
     expect(() => controller.sync()).toThrow(); expect(() => controller.sync('Bearer wrong')).toThrow();
-    expect(sync).not.toHaveBeenCalled(); controller.sync('Bearer cron-key'); expect(sync).toHaveBeenCalledOnce();
+    expect(sync).not.toHaveBeenCalled(); await controller.sync('Bearer cron-key'); expect(sync).toHaveBeenCalledOnce();
   });
 });
 

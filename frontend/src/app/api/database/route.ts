@@ -2,6 +2,7 @@ import { backendUrl } from '../../backend-url';
 import { connection } from 'next/server';
 
 export async function GET(request: Request) {
+  if (process.env.NODE_ENV === 'production' || process.env.VERCEL) return new Response(null, { status: 404 });
   await connection();
   const probe = new URL(request.url).searchParams.get("probe") ?? crypto.randomUUID();
   const url = backendUrl('/database/status');
