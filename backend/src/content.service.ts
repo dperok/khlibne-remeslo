@@ -1,4 +1,3 @@
-import { MAX_QUANTITY_DIGITS } from './cart-limits.js';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { DatabaseService } from './database.service.js';
@@ -6,7 +5,7 @@ import type { OpeningHours } from './opening-hours.js';
 import { bakery, catalog } from './catalog.data.js';
 
 export type Product = (typeof catalog)[number] & { visible?: boolean; price?: number; available?: boolean; availabilityMode?: 'poster' | 'manual' };
-export type Bakery = Omit<typeof bakery, 'phone' | 'email' | 'instagram'> & { phone: string | null; email: string | null; instagram: string | null; openingHours?: OpeningHours; quantityDigits?: number };
+export type Bakery = Omit<typeof bakery, 'phone' | 'email' | 'instagram'> & { phone: string | null; email: string | null; instagram: string | null; openingHours?: OpeningHours };
 export type Content = { products: Product[]; bakery: Bakery; demo: boolean };
 
 function text(value: unknown, name: string, max: number, optional = false): string {
@@ -97,8 +96,6 @@ export class ContentService {
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new BadRequestException('Некоректна пошта');
     const instagram = contact('instagram', 300);
     if (instagram) { httpsUrl(instagram, 'instagram'); if (!['instagram.com', 'www.instagram.com'].includes(new URL(instagram).hostname)) throw new BadRequestException('Потрібне посилання Instagram'); }
-    const quantityDigits = body.quantityDigits;
-    if (quantityDigits !== undefined && (typeof quantityDigits !== 'number' || !Number.isInteger(quantityDigits) || quantityDigits < 1 || quantityDigits > MAX_QUANTITY_DIGITS)) throw new BadRequestException('Ліміт кількості: від 1 до 4 цифр');
     const hours = body.openingHours;
     if (hours !== undefined && (!Array.isArray(hours) || hours.length !== 7 || !hours.every(day => day === null || (typeof day === 'object' && typeof day.open === 'string' && typeof day.close === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(day.open) && /^([01]\d|2[0-3]):[0-5]\d$/.test(day.close) && day.open !== day.close)))) throw new BadRequestException('Некоректний графік роботи');
     const updated = await this.mutate((content) => {
@@ -109,7 +106,7 @@ export class ContentService {
         }
       }
       content.bakery = { ...content.bakery, city: text(body.city, 'city', 100), address: text(body.address, 'address', 200),
-        fullAddress: text(body.fullAddress, 'fullAddress', 400), mapsUrl: httpsUrl(text(body.mapsUrl, 'mapsUrl', 700), 'mapsUrl'), phone, email, instagram, ...(quantityDigits !== undefined ? { quantityDigits } : {}), ...(hours !== undefined ? { openingHours: hours as OpeningHours } : {}) };
+        fullAddress: text(body.fullAddress, 'fullAddress', 400), mapsUrl: httpsUrl(text(body.mapsUrl, 'mapsUrl', 700), 'mapsUrl'), phone, email, instagram, ...(hours !== undefined ? { openingHours: hours as OpeningHours } : {}) };
     });
     return updated.bakery;
   }

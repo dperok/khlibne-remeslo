@@ -1,11 +1,6 @@
 'use client';
 
 import Image from 'next/image';
-import { cartQuantityDigits, cartQuantityLimit } from '../../../backend/src/cart-limits';
-import QuantityInput from './quantity-input';
-import type { CSSProperties } from 'react';
-import Cart, { useCart } from './cart';
-import cartStyles from './cart.module.css';
 
 import VisitTracker from './visit-tracker';
 import { useRef, useState } from 'react';
@@ -18,7 +13,7 @@ import OpeningSchedule from './opening-schedule';
 import type { OpeningHours } from '../../../backend/src/opening-hours';
 
 export type Product = { available?: boolean; availabilityMode?: 'poster' | 'manual'; price?: number; id: string; name: string; category: string; categoryLabel: string; image: string; description: string; ingredients: string; allergens: string; tag: string };
-export type Bakery = { name: string; city: string; address: string; fullAddress: string; mapsUrl: string; phone: string | null; instagram: string | null; email: string | null; latitude?: number; longitude?: number; openingHours?: OpeningHours; quantityDigits?: number };
+export type Bakery = { name: string; city: string; address: string; fullAddress: string; mapsUrl: string; phone: string | null; instagram: string | null; email: string | null; latitude?: number; longitude?: number; openingHours?: OpeningHours };
 
 function Arrow({ diagonal = false }: { diagonal?: boolean }) {
   return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d={diagonal ? 'M6 18 18 6M6 6h12v12' : 'M4 12h16m-6-6 6 6-6 6'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
@@ -28,11 +23,6 @@ function Pin() {
 }
 
 export default function BakerySite({ products, bakery, demo = false }: { products: Product[]; bakery: Bakery; demo?: boolean }) {
-  const quantityDigits = cartQuantityDigits(bakery.quantityDigits);
-  const maxQuantity = cartQuantityLimit(quantityDigits);
-  const cart = useCart(maxQuantity);
-  const [cartOpen, setCartOpen] = useState(false);
-  const [added, setAdded] = useState('');
   const [page, setPage] = useState(1);
   const [category, setCategory] = useState('all');
   const [query, setQuery] = useState('');
@@ -48,31 +38,12 @@ export default function BakerySite({ products, bakery, demo = false }: { product
     setPage(next);
     document.getElementById('catalog')?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
   }
-  function cannotAdd(product: Product) {
-    return !cart.ready || !!cart.pending || demo || product.available === false || product.price == null ||
-      (cart.lines.find(line => line.id === product.id)?.quantity ?? 0) >= maxQuantity ||
-      (cart.lines.length >= 50 && !cart.lines.some(line => line.id === product.id));
-  }
-  function addProduct(product: Product) {
-    if (cannotAdd(product)) return;
-    cart.quantity(product.id, (cart.lines.find(line => line.id === product.id)?.quantity ?? 0) + 1);
-    setAdded(`Додано до кошика: ${product.name}`);
-  }
-  function quantityControl(product: Product) {
-    const quantity = cart.lines.find(line => line.id === product.id)?.quantity ?? 0;
-    return <div className={`${styles.quickControl} ${quantity > 0 ? styles.quickControlExpanded : ''}`} style={{ '--quantity-digits': quantityDigits } as CSSProperties} role="group" aria-label={`Кількість у кошику: ${product.name}`}>
-      {quantity > 0 && <><button className={styles.quickDecrease} disabled={!cart.ready || !!cart.pending} onClick={() => cart.quantity(product.id, quantity - 1)} aria-label={`Зменшити кількість: ${product.name}`}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg></button><QuantityInput value={quantity} digits={quantityDigits} disabled={!cart.ready || !!cart.pending} label={`Кількість: ${product.name}`} onChange={amount => cart.quantity(product.id, amount)} /></>}
-      <button className={styles.quickIncrease} disabled={cannotAdd(product)} onClick={() => addProduct(product)} aria-label={`${quantity > 0 ? 'Збільшити кількість' : 'Додати до кошика'}: ${product.name}`} title={product.available === false ? 'Немає в наявності' : 'Додати до кошика'}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg></button>
-    </div>;
-  }
-  function openProduct(product: Product) { setAdded(''); setSelected(product); dialog.current?.showModal(); }
+  function openProduct(product: Product) { setSelected(product); dialog.current?.showModal(); }
 
   return <>
     <VisitTracker />
-    <Cart cart={cart} products={products} bakery={bakery} open={cartOpen} onClose={() => setCartOpen(false)} />
     <a href="#catalog" className="skip-link">Перейти до каталогу</a>
-    <div className={styles.topline}><div className={styles.toplineLinks}><a href="https://t.me/Khlibne_remeslo_kh_bot" target="_blank" rel="noopener noreferrer"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.7 3.3a1 1 0 0 0-1.1-.2L2.9 10c-1 .4-1 1.1-.2 1.4l4.6 1.4 1.8 5.5c.2.6.5.8.9.8.3 0 .6-.2.9-.5l2.6-2.5 4.7 3.5c.9.5 1.5.2 1.7-.8l2.7-13.8c.2-.8 0-1.4-.9-1.7ZM8.1 12.5l10.5-6.6c.5-.3.9-.1.5.2l-8.7 7.8-.3 3.6-2-5Z" /></svg>Telegram</a><a href={bakery.mapsUrl} target="_blank" rel="noopener noreferrer"><Pin />{bakery.city}, {bakery.address}</a><ThemeToggle /></div><button className={cartStyles.trigger} onClick={() => setCartOpen(true)} aria-label={`Кошик: ${cart.count} товарів`}><svg width="29" height="29" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 3h2l3 12h11l3-9H6M9 20h.01M18 20h.01" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg><span>{cart.count}</span></button></div>
-    <p role="status" className={styles.cartAnnouncement}>{selected ? '' : added}</p>
+    <div className={styles.topline}><div className={styles.toplineLinks}><a href="https://t.me/Khlibne_remeslo_kh_bot" target="_blank" rel="noopener noreferrer"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.7 3.3a1 1 0 0 0-1.1-.2L2.9 10c-1 .4-1 1.1-.2 1.4l4.6 1.4 1.8 5.5c.2.6.5.8.9.8.3 0 .6-.2.9-.5l2.6-2.5 4.7 3.5c.9.5 1.5.2 1.7-.8l2.7-13.8c.2-.8 0-1.4-.9-1.7ZM8.1 12.5l10.5-6.6c.5-.3.9-.1.5.2l-8.7 7.8-.3 3.6-2-5Z" /></svg>Telegram</a><a href={bakery.mapsUrl} target="_blank" rel="noopener noreferrer"><Pin />{bakery.city}, {bakery.address}</a><ThemeToggle /></div></div>
     <header className={styles.header}>
       <a href="#home" className={styles.brand} aria-label="Хлібне ремесло — на початок"><Wheat /><span>Хлібне ремесло<small>ПЕКАРНЯ З ХАРАКТЕРОМ</small></span></a>
       <nav aria-label="Головна навігація"><a href="#catalog">Наша випічка</a><a href="#about">Про пекарню</a><a href="#contacts">Контакти</a></nav>
@@ -117,7 +88,7 @@ export default function BakerySite({ products, bakery, demo = false }: { product
         <div className={styles.products} aria-live="polite">{visible.slice((currentPage - 1) * 18, currentPage * 18).map((product, index) => <article key={product.id} className={`${styles.product} ${product.available === false ? styles.unavailableProduct : ''}`}>
           <button className={styles.productImage} onClick={() => openProduct(product)} aria-label={`Детальніше: ${product.name}`}><Image unoptimized={product.image.startsWith('https://')} src={product.image} alt={product.name} fill sizes="(max-width: 440px) 100vw, (max-width: 760px) 50vw, 33vw" />{product.tag && <span className={styles.productTag}>{product.tag}</span>}<span className={styles.imageIndex}>{((currentPage - 1) * 18 + index + 1).toString().padStart(2, '0')}</span></button>
           <div className={styles.productMeta}><span>{product.categoryLabel}</span><span className={styles.price}>{product.price != null ? `${product.price.toLocaleString('uk-UA')} ₴` : demo ? 'Приклад асортименту' : ''}</span></div>
-          <div className={styles.productHeading}><button className={styles.productTitle} onClick={() => openProduct(product)}><h3>{product.name}</h3></button>{quantityControl(product)}<button className={styles.productDetails} onClick={() => openProduct(product)} aria-label={`Відкрити опис: ${product.name}`}><Arrow diagonal /></button></div>
+          <button className={styles.productTitle} onClick={() => openProduct(product)}><h3>{product.name}</h3><span><Arrow diagonal /></span></button>
           {product.available === false && <p className={styles.stockStatus}>Немає в наявності</p>}
           <p className={styles.productDescription}>{product.description}</p>
         </article>)}</div>
@@ -137,7 +108,7 @@ export default function BakerySite({ products, bakery, demo = false }: { product
     </main>
     <footer className={styles.footer}><a href="#home" className={styles.brand}><Wheat /><span>Хлібне ремесло<small>ПЕКАРНЯ З ХАРАКТЕРОМ</small></span></a><span>Харків · {bakery.address}</span><span>© 2026 Хлібне ремесло</span><a href="#home">Нагору ↑</a></footer>
     <dialog ref={dialog} className={styles.dialog} onClose={() => setSelected(null)} onClick={(event) => { if (event.target === event.currentTarget) dialog.current?.close(); }} aria-labelledby="product-dialog-title">
-      {selected && <><button className={styles.closeDialog} onClick={() => dialog.current?.close()} aria-label="Закрити опис">×</button><div className={styles.dialogImage}><Image unoptimized={selected.image.startsWith('https://')} src={selected.image} alt={selected.name} fill sizes="(max-width: 700px) 90vw, 420px" /></div><div className={styles.dialogCopy}><p className={styles.eyebrow}>{selected.categoryLabel}</p><h2 id="product-dialog-title">{selected.name}</h2>{selected.available === false && <p className={styles.stockStatus}>Немає в наявності</p>}<p>{selected.description}</p><p className={styles.dialogPrice}>{selected.price != null ? `${selected.price.toLocaleString('uk-UA')} ₴` : ''}</p>{selected.ingredients && <><h3>Склад</h3><p>{selected.ingredients}</p></>}{selected.allergens && <><h3>Можливі алергени</h3><p>{selected.allergens}</p></>}{demo && <p className={styles.dialogNote}>Демонстраційна позиція.</p>}<div className={cartStyles.productActions}><button className={cartStyles.add} disabled={cannotAdd(selected)} onClick={() => addProduct(selected)}>Додати до кошика <span aria-hidden="true">+</span></button><button className={cartStyles.add} onClick={() => { dialog.current?.close(); setCartOpen(true); }}>Відкрити кошик</button></div><p role="status" className={cartStyles.addedNotice}>{added}</p></div></>}
+      {selected && <><button className={styles.closeDialog} onClick={() => dialog.current?.close()} aria-label="Закрити опис">×</button><div className={styles.dialogImage}><Image unoptimized={selected.image.startsWith('https://')} src={selected.image} alt={selected.name} fill sizes="(max-width: 700px) 90vw, 420px" /></div><div className={styles.dialogCopy}><p className={styles.eyebrow}>{selected.categoryLabel}</p><h2 id="product-dialog-title">{selected.name}</h2>{selected.available === false && <p className={styles.stockStatus}>Немає в наявності</p>}<p>{selected.description}</p><p className={styles.dialogPrice}>{selected.price != null ? `${selected.price.toLocaleString('uk-UA')} ₴` : ''}</p>{selected.ingredients && <><h3>Склад</h3><p>{selected.ingredients}</p></>}{selected.allergens && <><h3>Можливі алергени</h3><p>{selected.allergens}</p></>}{demo && <p className={styles.dialogNote}>Демонстраційна позиція.</p>}<a href={bakery.mapsUrl} className={styles.primary} target="_blank" rel="noopener noreferrer">Завітати до пекарні <Arrow diagonal /></a></div></>}
     </dialog>
   </>;
 }

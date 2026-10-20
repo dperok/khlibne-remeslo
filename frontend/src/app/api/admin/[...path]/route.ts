@@ -4,7 +4,7 @@ type Context = { params: Promise<{ path: string[] }> };
 async function proxy(request: Request, context: Context) {
   const { path } = await context.params;
   const route = path.join('/');
-  if (!/^(login|logout|session|content|analytics|bakery|poster\/sync|orders(?:\/[a-fA-F0-9-]{36})?|products(?:\/[a-zA-Z0-9-]+)?)$/.test(route)) return Response.json({ message: 'Не знайдено' }, { status: 404 });
+  if (!/^(login|logout|session|content|analytics|bakery|poster\/sync|products(?:\/[a-zA-Z0-9-]+)?)$/.test(route)) return Response.json({ message: 'Не знайдено' }, { status: 404 });
   if (!['GET', 'HEAD'].includes(request.method)) {
     const origin = request.headers.get('origin');
     const expected = process.env.PUBLIC_SITE_URL ?? new URL(request.url).origin;

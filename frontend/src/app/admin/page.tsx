@@ -1,6 +1,5 @@
 'use client';
 
-import OrdersPanel from './orders-panel';
 import WheatLogo from '../wheat-logo';
 
 import Link from 'next/link';
@@ -105,10 +104,9 @@ export default function AdminPage() {
     </main> : <main className={styles.workspace}>
       <div className={styles.title}><div><p className={styles.eyebrow}>ХЛІБНЕ РЕМЕСЛО</p><h1>Ваша <em>майстерня.</em></h1></div><a href="/" target="_blank" rel="noopener noreferrer">Переглянути сайт ↗</a></div>
       {content.temporaryPassword && <aside className={styles.warning}>Використовується тимчасовий пароль. Змініть <code>ADMIN_PASSWORD</code> у кореневому <code>.env</code> та перезапустіть сервер.</aside>}
-      <nav className={styles.tabs} aria-label="Розділи панелі">{[['orders', 'Замовлення'], ['products', 'Каталог'], ['contacts', 'Контакти й адреса'], ['analytics', 'Відвідуваність'], ['bots', 'Telegram-боти']].map(([id, label]) => <button key={id} aria-pressed={tab === id} onClick={() => { setTab(id); setNotice(''); setError(''); }}>{label}</button>)}</nav>
+      <nav className={styles.tabs} aria-label="Розділи панелі">{[['products', 'Каталог'], ['contacts', 'Контакти й адреса'], ['analytics', 'Відвідуваність'], ['bots', 'Telegram-боти']].map(([id, label]) => <button key={id} aria-pressed={tab === id} onClick={() => { setTab(id); setNotice(''); setError(''); }}>{label}</button>)}</nav>
       <p role="alert" className={styles.error}>{error}</p><p role="status" className={styles.success}>{notice}</p>
       {tab === 'analytics' && <AnalyticsPanel />}
-      {tab === 'orders' && <OrdersPanel />}
       {tab === 'products' && <section className={styles.panel} style={{ marginBottom: 24 }}>
         <div className={styles.panelHeading}><h2>Наявність із Poster</h2><button disabled={busy || !content.poster.configured} onClick={() => action(async () => {
           const result = await api('poster/sync', 'POST'); const next = await refresh();
@@ -151,7 +149,6 @@ export default function AdminPage() {
         </section>
       </div>}
       {tab === 'contacts' && contacts && <section className={`${styles.panel} ${styles.contactPanel}`}><h2>Контакти й адреса</h2><p>Порожні контакти не показуватимуться відвідувачам. Зміни також з’являться у Telegram-ботах.</p><form onSubmit={(event) => { event.preventDefault(); action(async () => { await api('bakery', 'PUT', contacts); await refresh(); setNotice('Контакти й адресу збережено.'); }); }}>
-        <fieldset><legend>Налаштування кошика</legend><label>Максимальна кількість цифр у кількості товару<input type="number" min={1} max={4} step={1} required value={contacts.quantityDigits ?? 2} onChange={event => setContacts({ ...contacts, quantityDigits: event.target.value === '' ? undefined : Number(event.target.value) })} /></label><p>Від 1 до 4 цифр. Зараз максимум: {10 ** (contacts.quantityDigits ?? 2) - 1} шт. одного товару. Ліміт діє для ручного вводу, кнопки «+» та оформлення замовлення.</p></fieldset>
         <fieldset><legend>Години роботи · Київ</legend><p>Вкажіть графік для кожного дня. Без налаштування графік не відображається.</p>{dayNames.map((day, index) => { const hours = contacts.openingHours?.[index]; return <div key={day} className={styles.scheduleRow}><label><input type="checkbox" checked={!!hours} onChange={event => { const next = [...(contacts.openingHours ?? Array(7).fill(null))]; next[index] = event.target.checked ? { open: '08:00', close: '20:00' } : null; setContacts({ ...contacts, openingHours: next }); }} />{day}</label>{hours && <><label>Відчинення<input type="time" required value={hours.open} onChange={event => { const next = [...contacts.openingHours!]; next[index] = { ...hours, open: event.target.value }; setContacts({ ...contacts, openingHours: next }); }} /></label><label>Зачинення<input type="time" required value={hours.close} onChange={event => { const next = [...contacts.openingHours!]; next[index] = { ...hours, close: event.target.value }; setContacts({ ...contacts, openingHours: next }); }} /></label></>}</div>; })}</fieldset>
         {([['city', 'Місто', 'text'], ['address', 'Адреса на сайті', 'text'], ['fullAddress', 'Повна адреса', 'text'], ['mapsUrl', 'Посилання на карту', 'url'], ['phone', 'Телефон', 'tel'], ['email', 'Електронна пошта', 'email'], ['instagram', 'Instagram: HTTPS-посилання', 'url']] as const).map(([key, label, type]) => <label key={key}>{label}<input type={type} required={['city', 'address', 'fullAddress', 'mapsUrl'].includes(key)} maxLength={key === 'mapsUrl' ? 700 : key === 'fullAddress' ? 400 : key === 'city' ? 100 : key === 'phone' ? 40 : key === 'instagram' ? 300 : 200} value={contacts[key] ?? ''} onChange={(event) => setContacts({ ...contacts, [key]: event.target.value })} /></label>)}
         <div className={styles.formRow}>{(['latitude', 'longitude'] as const).map((key) => <label key={key}>{key === 'latitude' ? 'Широта — локація Telegram' : 'Довгота — локація Telegram'}<input type="number" step="any" min={key === 'latitude' ? -90 : -180} max={key === 'latitude' ? 90 : 180} value={contacts[key] ?? ''} onChange={(event) => setContacts({ ...contacts, [key]: event.target.value === '' ? undefined : Number(event.target.value) })} /></label>)}</div>
